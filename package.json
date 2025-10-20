@@ -1,0 +1,60 @@
+{
+  "name": "@gesslar/actioneer",
+  "version": "0.1.0",
+  "description": "Ready? Set?? ACTION!! pew!pew!pew!pew!",
+  "main": "./src/index.js",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/types/index.d.ts",
+      "default": "./src/index.js"
+    }
+  },
+  "files": [
+    "src/",
+    "README.md",
+    "UNLICENSE.txt"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "submit": "npm publish --access public",
+    "update": "npx npm-check-updates -u && npm install",
+    "test": "node --test tests/unit/*.test.js",
+    "test:unit": "node --test tests/unit/*.test.js",
+    "pr": "gt submit --publish --restack --ai"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gesslar/actioneer.git"
+  },
+  "keywords": [
+    "actioneer",
+    "pipeline",
+    "workflow",
+    "sabrina",
+    "salem",
+    "package",
+    "composition",
+    "lasagna"
+  ],
+  "author": "gesslar",
+  "license": "Unlicense",
+  "homepage": "https://github.com/gesslar/toolkit#readme",
+  "devDependencies": {
+    "@stylistic/eslint-plugin": "^5.4.0",
+    "@types/node": "^24.6.2",
+    "@typescript-eslint/eslint-plugin": "^8.45.0",
+    "@typescript-eslint/parser": "^8.45.0",
+    "eslint": "^9.36.0",
+    "eslint-plugin-jsdoc": "^60.7.1",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@gesslar/toolkit": "^0.6.0"
+  }
+}

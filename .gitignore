@@ -1,0 +1,8 @@
+node_modules/
+.vscode/
+.env
+work/
+*.cpuprofile
+
+# Allow contributors to drop a local tsconfig without committing it
+tsconfig.json
