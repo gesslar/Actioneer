@@ -3,6 +3,7 @@ node_modules/
 .env
 work/
 *.cpuprofile
+gesslar-actioneer-*.tgz
 
 # Allow contributors to drop a local tsconfig without committing it
 tsconfig.json
