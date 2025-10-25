@@ -1,5 +1,3 @@
-import Activity from "./Activity.js"
-
 /**
  * @typedef {object} WrappedActivityConfig
  * @property {string|symbol} name Activity identifier used by hooks/logs.
@@ -9,54 +7,56 @@ import Activity from "./Activity.js"
  * @property {unknown} [action] Parent action instance supplied when invoking the op.
  * @property {(message: string, level?: number, ...args: Array<unknown>) => void} [debug] Optional logger reference.
  */
-
 /**
  * @typedef {Generator<Activity, void, unknown>} ActivityIterator
  */
-
 /**
  * Thin wrapper that materialises {@link Activity} instances on demand.
  */
 export default class ActionWrapper {
   /**
-   * Registry of activities supplied by the builder.
-   *
-   * @type {Map<string|symbol, WrappedActivityConfig>}
-   */
-  #activities = new Map()
-  /**
-   * Logger invoked for wrapper lifecycle events.
-   *
-   * @type {(message: string, level?: number, ...args: Array<unknown>) => void}
-   */
-  #debug = () => {}
-
-  /**
    * Create a wrapper from the builder payload.
    *
    * @param {{activities: Map<string|symbol, WrappedActivityConfig>, debug: (message: string, level?: number, ...args: Array<unknown>) => void}} init Builder payload containing activities + logger.
    */
-  constructor({activities,debug}) {
-    this.#debug = debug
-    this.#activities = activities
-    this.#debug(
-      "Instantiating ActionWrapper with %o activities.",
-      2,
-      activities.size,
-    )
-  }
-
-  *#_activities() {
-    for(const [,activity] of this.#activities)
-      yield new Activity(activity)
-  }
-
+  constructor({ activities, debug }: {
+    activities: Map<string | symbol, WrappedActivityConfig>;
+    debug: (message: string, level?: number, ...args: Array<unknown>) => void;
+  })
   /**
    * Iterator over the registered activities.
    *
    * @returns {ActivityIterator} Lazy iterator yielding Activity instances.
    */
-  get activities() {
-    return this.#_activities()
-  }
+  get activities(): ActivityIterator
+  #private
 }
+export type WrappedActivityConfig = {
+  /**
+   * Activity identifier used by hooks/logs.
+   */
+  name: string | symbol;
+  /**
+   * Operation or nested wrapper to execute.
+   */
+  op: (context: unknown) => unknown | Promise<unknown> | ActionWrapper;
+  /**
+   * Optional loop semantic flags.
+   */
+  kind?: number | undefined;
+  /**
+   * Predicate tied to WHILE/UNTIL semantics.
+   */
+  pred?: ((context: unknown) => boolean | Promise<boolean>) | undefined;
+  /**
+   * Parent action instance supplied when invoking the op.
+   */
+  action?: unknown;
+  /**
+   * Optional logger reference.
+   */
+  debug?: ((message: string, level?: number, ...args: Array<unknown>) => void) | undefined;
+}
+export type ActivityIterator = Generator<Activity, void, unknown>
+import Activity from './Activity.js'
+//# sourceMappingURL=ActionWrapper.d.ts.map
