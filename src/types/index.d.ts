@@ -1,6 +1,7 @@
-export {default as ActionBuilder} from './ActionBuilder'
-export {default as ActionHooks} from './ActionHooks'
-export {default as ActionRunner} from './ActionRunner'
-export {default as ActionWrapper} from './ActionWrapper'
-export {default as Activity, ACTIVITY} from './Activity'
-export {default as Piper} from './Piper'
+export { default as ActionBuilder } from './lib/ActionBuilder.js'
+export { default as ActionHooks } from './lib/ActionHooks.js'
+export { default as ActionRunner } from './lib/ActionRunner.js'
+export { default as ActionWrapper } from './lib/ActionWrapper.js'
+export { default as Piper } from './lib/Piper.js'
+export { default as Activity, ACTIVITY } from './lib/Activity.js'
+//# sourceMappingURL=index.d.ts.map

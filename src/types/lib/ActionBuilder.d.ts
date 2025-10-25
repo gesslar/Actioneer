@@ -1,26 +1,18 @@
-import {Data, Sass, Valid} from "@gesslar/toolkit"
-
-import ActionWrapper from "./ActionWrapper.js"
-
 /** @typedef {import("./ActionRunner.js").default} ActionRunner */
 /** @typedef {typeof import("./Activity.js").ACTIVITY} ActivityFlags */
-
 /**
  * @typedef {(message: string, level?: number, ...args: Array<unknown>) => void} DebugFn
  */
-
 /**
  * @typedef {object} ActionBuilderAction
  * @property {(builder: ActionBuilder) => void} setup Function invoked during {@link ActionBuilder#build} to register activities.
  * @property {symbol} [tag] Optional tag to reuse when reconstructing builders.
  */
-
 /**
  * @typedef {object} ActionBuilderConfig
  * @property {symbol} [tag] Optional tag for the builder instance.
  * @property {DebugFn} [debug] Logger used by the pipeline internals.
  */
-
 /**
  * @typedef {object} ActivityDefinition
  * @property {ActionBuilderAction|null} action Parent action instance when available.
@@ -30,11 +22,9 @@ import ActionWrapper from "./ActionWrapper.js"
  * @property {number} [kind] Optional kind flags from {@link ActivityFlags}.
  * @property {(context: unknown) => boolean|Promise<boolean>} [pred] Loop predicate.
  */
-
 /**
  * @typedef {(context: unknown) => unknown|Promise<unknown>} ActionFunction
  */
-
 /**
  * Fluent builder for describing how an action should process the context that
  * flows through the {@link ActionRunner}. Consumers register named activities,
@@ -56,36 +46,13 @@ import ActionWrapper from "./ActionWrapper.js"
  * @class ActionBuilder
  */
 export default class ActionBuilder {
-  /** @type {ActionBuilderAction|null} */
-  #action = null
-  /** @type {Map<string|symbol, ActivityDefinition>} */
-  #activities = new Map([])
-  /** @type {DebugFn|null} */
-  #debug = null
-  /** @type {symbol|null} */
-  #tag = null
-
   /**
    * Creates a new ActionBuilder instance with the provided action callback.
    *
    * @param {ActionBuilderAction} [action] Base action invoked by the runner when a block satisfies the configured structure.
    * @param {ActionBuilderConfig} [config] Options
    */
-  constructor(
-    action,
-    {tag = action?.tag ?? Symbol(performance.now()), debug = () => {}} = {},
-  ) {
-    this.#debug = debug
-    this.#tag = this.#tag || tag
-
-    if(action) {
-      if(Data.typeOf(action.setup) !== "Function")
-        throw Sass.new("Setup must be a function.")
-
-      this.#action = action
-    }
-  }
-
+  constructor(action?: ActionBuilderAction, { tag, debug }?: ActionBuilderConfig)
   /**
    * Register an activity that the runner can execute.
    *
@@ -98,7 +65,7 @@ export default class ActionBuilder {
    * @param {ActionFunction} op Operation to execute once.
    * @returns {ActionBuilder}
    */
-
+  do(name: string | symbol, op: ActionFunction): ActionBuilder
   /**
    * @overload
    * @param {string|symbol} name Activity name
@@ -107,80 +74,64 @@ export default class ActionBuilder {
    * @param {ActionFunction|import("./ActionWrapper.js").default} op Operation or nested wrapper to execute.
    * @returns {ActionBuilder}
    */
-
-  /**
-   * Handles runtime dispatch across the documented overloads.
-   *
-   * @param {string|symbol} name Activity name
-   * @param {...unknown} args See overloads
-   * @returns {ActionBuilder} The builder instance for chaining
-   */
-  do(name, ...args) {
-    this.#dupeActivityCheck(name)
-
-    // signatures
-    // name, [function] => once
-    // name, [number,function,function] => some kind of control operation
-    // name, [number,function,ActionBuilder] => some kind of branch
-
-    const action = this.#action
-    const debug = this.#debug
-    const activityDefinition = {name, action, debug}
-
-    if(args.length === 1) {
-      const [op, kind] = args
-      Valid.type(kind, "Number|undefined")
-      Valid.type(op, "Function")
-
-      Object.assign(activityDefinition, {op, kind})
-    } else if(args.length === 3) {
-      const [kind, pred, op] = args
-
-      Valid.type(kind, "Number")
-      Valid.type(pred, "Function")
-      Valid.type(op, "Function|ActionWrapper")
-
-      Object.assign(activityDefinition, {kind, pred, op})
-    } else {
-      throw Sass.new("Invalid number of arguments passed to 'do'")
-    }
-
-    this.#activities.set(name, activityDefinition)
-
-    return this
-  }
-
-  /**
-   * Validates that an activity name has not been reused.
-   *
-   * @private
-   * @param {string | symbol} name Activity identifier.
-   */
-  #dupeActivityCheck(name) {
-    Valid.assert(
-      !this.#activities.has(name),
-      `Activity '${String(name)}' has already been registered.`,
-    )
-  }
-
+  do(name: string | symbol, kind: number, pred: (context: unknown) => boolean | Promise<boolean>, op: ActionFunction | import('./ActionWrapper.js').default): ActionBuilder
   /**
    * Finalises the builder and returns a payload that can be consumed by the
    * runner.
    *
    * @returns {import("./ActionWrapper.js").default} Payload consumed by the {@link ActionRunner} constructor.
    */
-  build() {
-    const action = this.#action
-
-    if(!action.tag) {
-      action.tag = this.#tag
-
-      action.setup.call(action, this)
-    }
-
-    return new ActionWrapper({
-      activities: this.#activities,
-      debug: this.#debug,
-    })
-  }
+  build(): import('./ActionWrapper.js').default
+  #private
 }
+export type ActionRunner = import('./ActionRunner.js').default
+export type ActivityFlags = typeof import('./Activity.js').ACTIVITY
+export type DebugFn = (message: string, level?: number, ...args: Array<unknown>) => void
+export type ActionBuilderAction = {
+  /**
+   * Function invoked during {@link ActionBuilder#build} to register activities.
+   */
+  setup: (builder: ActionBuilder) => void;
+  /**
+   * Optional tag to reuse when reconstructing builders.
+   */
+  tag?: symbol | undefined;
+}
+export type ActionBuilderConfig = {
+  /**
+   * Optional tag for the builder instance.
+   */
+  tag?: symbol | undefined;
+  /**
+   * Logger used by the pipeline internals.
+   */
+  debug?: DebugFn | undefined;
+}
+export type ActivityDefinition = {
+  /**
+   * Parent action instance when available.
+   */
+  action: ActionBuilderAction | null;
+  /**
+   * Logger function.
+   */
+  debug: DebugFn | null;
+  /**
+   * Activity identifier.
+   */
+  name: string | symbol;
+  /**
+   * Operation to execute.
+   */
+  op: ActionFunction | import('./ActionWrapper.js').default;
+  /**
+   * Optional kind flags from {@link ActivityFlags}.
+   */
+  kind?: number | undefined;
+  /**
+   * Loop predicate.
+   */
+  pred?: ((context: unknown) => boolean | Promise<boolean>) | undefined;
+}
+export type ActionFunction = (context: unknown) => unknown | Promise<unknown>
+//# sourceMappingURL=ActionBuilder.d.ts.map

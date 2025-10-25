@@ -15,7 +15,10 @@ export default [
       ecmaVersion: "latest",
       sourceType: "module",
       globals: {
+        ...globals.es2021,
         ...globals.node,
+        Generator: "readonly",
+        IterableIterator: "readonly",
         fetch: "readonly",
         Headers: "readonly",
       },
@@ -151,7 +154,8 @@ export default [
       "jsdoc/check-tag-names": "error",
       "jsdoc/check-types": "error",
       "jsdoc/require-param-type": "error",
-      "jsdoc/require-returns-type": "error"
+      "jsdoc/require-returns-type": "error",
+      "jsdoc/no-undefined-types": "error"
     }
   },
   {
@@ -188,7 +192,7 @@ export default [
       "@stylistic/eol-last": ["error", "always"],
       "@stylistic/indent": ["error", 2],
       "@stylistic/max-len": ["warn", {
-        code: 120, // Slightly longer for type definitions
+        code: 160, // Allow longer signatures in declaration files
         ignoreComments: true,
         ignoreUrls: true,
         ignoreStrings: true,
@@ -201,7 +205,9 @@ export default [
         avoidEscape: true,
         allowTemplateLiterals: "always" // Fix deprecated value
       }],
-      "@stylistic/semi": ["error", "never"]
+      "@stylistic/semi": ["error", "never"],
+      "no-unused-private-class-members": "off",
+      "no-redeclare": "off"
     }
   }
 ]

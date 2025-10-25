@@ -8,6 +8,42 @@
 
 ## 🎯 **When Adding New Methods/Classes**
 
+### **Step 0: New Project / Fresh Scaffold Checklist**
+
+Before anyone (human or otherwise) starts wiring in features, make sure the repo baseline is ready for the automation in the later steps:
+
+1. **Copy the tooling files** into the project root:
+   - `tsconfig.types.json` (the one that emits `.d.ts` + `.d.ts.map`)
+   - `eslint.config.js` (or merge its relevant bits if you already have one)
+   - `WIRE_UP_AND_TESTING.md` itself, so future contributors know the drill.
+2. **Update `package.json` scripts** so there is a `types:build` entry:
+
+   ```json
+   {
+     "scripts": {
+       "types:build": "tsc -p tsconfig.types.json && eslint --fix \"src/types/**/*.d.ts\""
+     }
+   }
+   ```
+
+   Adjust the quoting if you’re on Windows, but keep the same two commands.
+3. **Lock in the directory layout**:
+   - Runtime code lives under `src/lib/**` + `src/index.js`.
+   - Generated declarations land in `src/types/**` (commit them).
+   - Consumers import from `src/index.js`, so always expose new classes there.
+4. **Sanity check the pipeline**:
+
+   ```bash
+   npm install
+   npm run types:build
+   npm run lint
+   npm test
+   ```
+
+   Running the types build once up front confirms everything is wired, and it gives you baseline `.d.ts` files with source maps for editors.
+
+With that scaffold in place, the rest of this playbook (Steps 1–5) applies cleanly.
+
 ### **Step 1: Validate the Logic Thoroughly**
 
 Before you write a single test, **audit your implementation**:
@@ -84,92 +120,51 @@ export * as YourNewDomainSystem from "./bundles/YourNewDomainSystem.js"
 - Bundles: `PascalCase` + "System" (ActionSystem, FileSystem)
 - Keep it consistent with existing patterns
 
-### **Step 3: Create/Update TypeScript Definitions**
+### **Step 3: Keep the Type Definitions in Sync**
 
-#### **JSDoc Style Guidelines for JavaScript Files:**
+`src/types` is now generated. Do **not** hand-edit anything in there. Instead:
 
-**🚨 CRITICAL STYLE RULES:**
+1. **Polish the JSDoc in your JS sources.** That’s what `tsc --allowJs` consumes when it builds the declarations. The tighter the annotations, the better the emitted `.d.ts`.
+2. **Regenerate everything** after touching `src/lib/**` or `src/index.js`:
 
-- ❌ **Never use `any`** - Use `unknown` instead for truly unknown types
-- ❌ **Never use `*`** - Use `unknown` instead
-- ❌ **Never use `[]` notation** - Use `Array<Type>` instead
-- ❌ **Never use `Function`** - Use specific function signatures instead (e.g., `(arg: string) => void`)
+   ```bash
+   npm run types:build
+   ```
+
+   This runs `tsc -p tsconfig.types.json` (to emit `.d.ts` + `.d.ts.map`) and then `eslint --fix "src/types/**/*.d.ts"` so the generated files match our lint rules.
+3. **Verify the output** in `src/types/lib/*.d.ts` plus `src/types/index.d.ts`. You should see a matching `.d.ts.map` that points back to your JS implementation.
+
+#### **JSDoc Style Guidelines for JavaScript Files**
+
+These rules keep the generator honest:
+
+- ❌ Never use `any` or `*` → use `unknown`.
+- ❌ Never use `[]` → use `Array<Type>`.
+- ❌ Never use bare `Function`/`Object` → describe the signature/shape explicitly.
 
 ```javascript
 // ❌ BAD
-/**
- * @param {any} data - Some data
- * @param {*} options - Some options
- * @param {string[]} items - Array of strings
- * @param {Function} callback - A callback function
- * @returns {object[]} Array of objects
- */
+/** @param {any} data @param {Function} callback */
 
 // ✅ GOOD
-/**
- * @param {unknown} data - Some data
- * @param {unknown} options - Some options
- * @param {Array<string>} items - Array of strings
- * @param {(result: string) => void} callback - A callback function
- * @returns {Array<object>} Array of objects
- */
+/** @param {unknown} data @param {(result: string) => void} callback */
 ```
 
-**Why?**
+Why? It forces better inference, keeps the emitted declarations stable, and avoids eslint yelling at you.
 
-- `unknown` is safer than `any` - forces type checking
-- `Array<Type>` is more explicit and consistent with TypeScript
-- Specific function signatures provide better IDE support and type safety
-- Maintains consistency between `.js` and `.d.ts` files
-- ESLint will complain about vague types like `Function`, `Object`, etc.
+#### **Need richer types?**
 
-#### **If `.d.ts` doesn't exist for your class:**
+Add more detailed JSDoc (overloads, generics via `@template`, etc.) directly in the JS source. Re-run `npm run types:build` and the declarations will pick it up automatically.
 
-Create `src/types/YourNewClass.d.ts`:
+### **Step 4: Check the Bundle Exports**
 
-```typescript
-// Implementation: ../lib/YourNewClass.js
+Because `tsc` reads `src/index.js`, any new export automatically shows up in `src/types/index.d.ts` after you run `npm run types:build`. Double-check that:
 
-/**
- * Brief description of what this class does.
- * Include usage examples and key behaviors.
- */
-declare class YourNewClass {
-  /**
-   * Document every public method thoroughly.
-   *
-   * @param param - Describe what this accepts
-   * @returns What this returns and when
-   *
-   * @example
-   * ```typescript
-   * const result = YourNewClass.method("input")
-   * console.log(result) // "Expected output"
-   * ```
-   */
-  static method(param: string): string
-}
+- Your new class is exported from `src/index.js` (Step 2).
+- The regenerated `src/types/index.d.ts` now re-exports it from `./lib/...`.
+- The matching `.d.ts.map` exists so F12 lands in the JS source.
 
-export default YourNewClass
-```
-
-#### **If `.d.ts` already exists:**
-
-Add your new methods with **full documentation**:
-
-- Parameter types and descriptions
-- Return types and behaviors
-- Usage examples
-- Edge case behaviors
-
-### **Step 4: Wire Up Re-export in `index.d.ts`**
-
-Add to the main type definitions:
-
-```typescript
-// src/types/index.d.ts
-export { default as YourNewClass } from './YourNewClass'
-```
+If something’s missing, it usually means the class wasn’t exported from `src/index.js` or the JSDoc left TypeScript guessing. Fix the source, rerun the build, done.
 
 ### **Step 5: Write Comprehensive Tests**
 

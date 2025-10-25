@@ -2,26 +2,43 @@ import {setTimeout as timeout} from "timers/promises"
 import {FileObject, Sass, Util, Valid} from "@gesslar/toolkit"
 
 /**
+ * @typedef {(message: string, level?: number, ...args: Array<unknown>) => void} DebugFn
+ */
+
+/**
+ * @typedef {object} ActionHooksConfig
+ * @property {string} actionKind Action identifier shared between runner and hooks.
+ * @property {FileObject} hooksFile File handle used to import the hooks module.
+ * @property {unknown} [hooks] Already-instantiated hooks implementation (skips loading).
+ * @property {number} [hookTimeout] Timeout applied to hook execution in milliseconds.
+ * @property {DebugFn} debug Logger to emit diagnostics.
+ */
+
+/**
+ * @typedef {Record<string, (context: unknown) => Promise<unknown>|unknown>} HookModule
+ */
+
+/**
  * Generic base class for managing hooks with configurable event types.
  * Provides common functionality for hook registration, execution, and lifecycle management.
  * Designed to be extended by specific implementations.
  */
 export default class ActionHooks {
+  /** @type {FileObject|null} */
   #hooksFile = null
+  /** @type {HookModule|null} */
   #hooks = null
+  /** @type {string|null} */
   #actionKind = null
+  /** @type {number} */
   #timeout = 1000 // Default 1 second timeout
+  /** @type {DebugFn|null} */
   #debug = null
 
   /**
    * Creates a new ActionHook instance.
    *
-   * @param {object} config - Configuration object
-   * @param {string} config.actionKind - Action identifier
-   * @param {FileObject} config.hooksFile - File object containing hooks with uri property
-   * @param {number} [config.hookTimeout] - Hook execution timeout in milliseconds
-   * @param {unknown} [config.hooks] - The hooks object
-   * @param {(message: string, level?: number, ...args: Array<unknown>) => void} config.debug - Debug function from Glog.
+   * @param {ActionHooksConfig} config Configuration values describing how to load the hooks.
    */
   constructor({actionKind, hooksFile, hooks, hookTimeout = 1000, debug}) {
     this.#actionKind = actionKind
@@ -90,11 +107,8 @@ export default class ActionHooks {
    * Loads hooks from the specified file and returns an initialized instance.
    * Override loadHooks() in subclasses to customize hook loading logic.
    *
-   * @param {object} config - Same configuration object as constructor
-   * @param {string|object} config.actionKind - Action identifier or instance
-   * @param {FileObject} config.hooksFile - File object containing hooks with uri property
-   * @param {number} [config.timeOut] - Hook execution timeout in milliseconds
-   * @param {(message: string, level?: number, ...args: Array<unknown>) => void} debug - The debug function.
+   * @param {ActionHooksConfig} config Same configuration object as constructor
+   * @param {DebugFn} debug The debug function.
    * @returns {Promise<ActionHooks|null>} Initialized hook manager or null if no hooks found
    */
   static async new(config, debug) {
@@ -138,6 +152,14 @@ export default class ActionHooks {
     }
   }
 
+  /**
+   * Invoke a dynamically-named hook such as `before$foo`.
+   *
+   * @param {'before'|'after'|'setup'|'cleanup'|string} kind Hook namespace.
+   * @param {string|symbol} activityName Activity identifier.
+   * @param {unknown} context Pipeline context supplied to the hook.
+   * @returns {Promise<void>}
+   */
   async callHook(kind, activityName, context) {
     try {
       const debug = this.#debug

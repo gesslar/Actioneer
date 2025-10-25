@@ -1,6 +1,6 @@
 {
   "name": "@gesslar/actioneer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Ready? Set?? ACTION!! pew!pew!pew!pew!",
   "main": "./src/index.js",
   "type": "module",
@@ -22,6 +22,7 @@
   "scripts": {
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
+    "types:build": "tsc -p tsconfig.types.json && eslint --fix \"src/types/**/*.d.ts\"",
     "submit": "npm publish --access public",
     "update": "npx npm-check-updates -u && npm install",
     "test": "node --test tests/unit/*.test.js",

@@ -3,6 +3,18 @@ import {FileObject, Sass, Valid} from "@gesslar/toolkit"
 import ActionBuilder from "./ActionBuilder.js"
 import {ACTIVITY} from "./Activity.js"
 import Piper from "./Piper.js"
+
+/** @typedef {import("./ActionHooks.js").default} ActionHooks */
+
+/**
+ * @typedef {(message: string, level?: number, ...args: Array<unknown>) => void} DebugFn
+ */
+
+/**
+ * @typedef {object} ActionRunnerOptions
+ * @property {ActionHooks} [hooks] Pre-configured hooks.
+ * @property {DebugFn} [debug] Logger function.
+ */
 /**
  * Orchestrates execution of {@link ActionBuilder}-produced pipelines.
  *
@@ -11,13 +23,49 @@ import Piper from "./Piper.js"
  * context object under `result.value` that can be replaced or enriched.
  */
 export default class ActionRunner extends Piper {
+  /**
+   * Pipeline produced by the builder.
+   *
+   * @type {import("./ActionWrapper.js").default|null}
+   */
   #actionWrapper = null
-  #debug = null
+  /**
+   * Logger invoked for diagnostics.
+   *
+   * @type {DebugFn}
+   */
+  #debug = () => {}
+  /**
+   * Filesystem path to a hooks module.
+   *
+   * @type {string|null}
+   */
   #hooksPath = null
+  /**
+   * Constructor name exported by the hooks module.
+   *
+   * @type {string|null}
+   */
   #hooksClassName = null
+  /**
+   * Lazily instantiated hooks implementation.
+   *
+   * @type {ActionHooks|null}
+   */
   #hooks = null
+  /**
+   * Unique tag for log correlation.
+   *
+   * @type {symbol|null}
+   */
   #tag = null
 
+  /**
+   * Instantiate a runner over an optional action wrapper.
+   *
+   * @param {import("./ActionWrapper.js").default|null} wrappedAction Output of {@link ActionBuilder#build}.
+   * @param {ActionRunnerOptions} [options] Optional hooks/debug overrides.
+   */
   constructor(wrappedAction, {hooks,debug=(() => {})} = {}) {
     super({debug})
 
@@ -106,6 +154,14 @@ export default class ActionRunner extends Piper {
     return context
   }
 
+  /**
+   * Execute a single activity, recursing into nested action wrappers when needed.
+   *
+   * @param {import("./Activity.js").default} activity Pipeline activity descriptor.
+   * @param {unknown} context Current pipeline context.
+   * @returns {Promise<unknown>} Resolved activity result.
+   * @private
+   */
   async #executeActivity(activity, context) {
     // What kind of op are we looking at? Is it a function?
     // Or a class instance of type ActionWrapper?
@@ -125,6 +181,15 @@ export default class ActionRunner extends Piper {
     throw Sass.new("We buy Functions and ActionWrappers. Only. Not whatever that was.")
   }
 
+  /**
+   * Evaluate the predicate for WHILE/UNTIL activity kinds.
+   *
+   * @param {import("./Activity.js").default} activity Activity currently executing.
+   * @param {(context: unknown) => boolean|Promise<boolean>} predicate Predicate to evaluate.
+   * @param {unknown} context Current pipeline context.
+   * @returns {Promise<boolean>} True when the predicate allows another iteration.
+   * @private
+   */
   async #predicateCheck(activity,predicate,context) {
     Valid.type(predicate, "Function")
 
@@ -135,6 +200,13 @@ export default class ActionRunner extends Piper {
     return `[object ${this.constructor.name}]`
   }
 
+  /**
+   * Configure hooks to be lazily loaded when the pipeline runs.
+   *
+   * @param {string} hooksPath Absolute path to the module exporting the hooks class.
+   * @param {string} className Constructor to instantiate from the hooks module.
+   * @returns {this} Runner instance for chaining.
+   */
   setHooks(hooksPath, className) {
     this.#hooksPath = hooksPath
     this.#hooksClassName = className
@@ -144,6 +216,12 @@ export default class ActionRunner extends Piper {
     return this
   }
 
+  /**
+   * Import and instantiate the configured hooks module.
+   *
+   * @returns {Promise<null|void>} Null when hooks are disabled, otherwise void.
+   * @private
+   */
   async #loadHooks() {
     if(!this.#hooksPath)
       return null
