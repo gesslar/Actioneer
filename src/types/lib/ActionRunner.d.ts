@@ -26,11 +26,10 @@ export default class ActionRunner extends Piper {
    * Executes the configured action pipeline.
    *
    * @param {unknown} context - Seed value passed to the first activity.
-   * @param {boolean} asIs - When true, do not wrap context in {value} (internal nested runners)
    * @returns {Promise<unknown>} Final value produced by the pipeline, or null when a parallel stage reports failures.
    * @throws {Sass} When no activities are registered or required parallel builders are missing.
    */
-  run(context: unknown, asIs?: boolean): Promise<unknown>
+  run(context: unknown): Promise<unknown>
   /**
    * Configure hooks to be lazily loaded when the pipeline runs.
    *

@@ -93,19 +93,13 @@ export default class ActionRunner extends Piper {
    * Executes the configured action pipeline.
    *
    * @param {unknown} context - Seed value passed to the first activity.
-   * @param {boolean} asIs - When true, do not wrap context in {value} (internal nested runners)
    * @returns {Promise<unknown>} Final value produced by the pipeline, or null when a parallel stage reports failures.
    * @throws {Sass} When no activities are registered or required parallel builders are missing.
    */
-  async run(context, asIs=false) {
+  async run(context) {
     this.#debug(this.#tag.description)
     const actionWrapper = this.#actionWrapper
     const activities = actionWrapper.activities
-
-    if(!asIs)
-      context = {value: context}
-
-    context
 
     for(const activity of activities) {
       activity.setActionHooks(this.#hooks)
@@ -137,7 +131,6 @@ export default class ActionRunner extends Piper {
                 break
 
             context = await this.#executeActivity(activity,context)
-            context
 
             if(kindUntil)
               if(!await this.#predicateCheck(activity,pred,context))
@@ -145,7 +138,6 @@ export default class ActionRunner extends Piper {
           }
         } else {
           context = await this.#executeActivity(activity, context)
-          context
         }
       }
 
@@ -175,7 +167,7 @@ export default class ActionRunner extends Piper {
 
       return await runner.run(context, true)
     } else if(opKind === "Function") {
-      return (await activity.run(context)).activityResult
+      return await activity.run(context)
     }
 
     throw Sass.new("We buy Functions and ActionWrappers. Only. Not whatever that was.")
