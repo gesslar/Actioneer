@@ -106,9 +106,8 @@ export default class Piper {
     }
 
     const setupResult = await Util.settleAll(
-      [...this.#lifeCycle.get("setup")
-
-      ].map(e => e()))
+      [...this.#lifeCycle.get("setup")].map(e => e())
+    )
     this.#processResult("Setting up the pipeline.", setupResult)
 
     // Start workers up to maxConcurrent limit
@@ -124,9 +123,8 @@ export default class Piper {
 
     // Run cleanup hooks
     const teardownResult = await Util.settleAll(
-      [...this.#lifeCycle.get("teardown")
-
-      ].map(e => e()))
+      [...this.#lifeCycle.get("teardown")].map(e => e())
+    )
     this.#processResult("Tearing down the pipeline.", teardownResult)
 
     return allResults
