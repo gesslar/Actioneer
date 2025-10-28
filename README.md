@@ -28,8 +28,8 @@ class MyAction {
   }
 }
 
-const wrapper = new ActionBuilder(new MyAction()).build()
-const runner = new ActionRunner(wrapper)
+const builder = new ActionBuilder(new MyAction())
+const runner = new ActionRunner(builder)
 const result = await runner.pipe([{}], 4) // run up to 4 contexts concurrently
 console.log(result)
 ```
@@ -43,6 +43,132 @@ import { ActionBuilder, ActionRunner } from "@gesslar/actioneer"
 ```
 
 If you'd like more complete typings or additional JSDoc, open an issue or send a PR — contributions welcome.
+
+## ActionHooks
+
+Actioneer supports lifecycle hooks that can execute before and after each activity in your pipeline. Hooks are loaded from a module and can be configured either by file path or by providing a pre-instantiated hooks object.
+
+### Hook System Overview
+
+The hook system allows you to:
+
+- Execute code before and after each activity in your pipeline
+- Implement setup and cleanup logic
+- Add observability and logging to your pipelines
+- Modify or inspect the context flowing through activities
+
+### Configuring Hooks
+
+You can attach hooks to an ActionBuilder in two ways:
+
+#### 1. Load hooks from a file
+
+```js
+import { ActionBuilder, ActionRunner } from "@gesslar/actioneer"
+
+class MyAction {
+  setup(builder) {
+    builder
+      .withHooksFile("./hooks/MyActionHooks.js", "MyActionHooks")
+      .do("prepare", ctx => { ctx.count = 0 })
+      .do("work", ctx => { ctx.count += 1 })
+  }
+}
+
+const builder = new ActionBuilder(new MyAction())
+const runner = new ActionRunner(builder)
+const result = await runner.pipe([{}], 4)
+```
+
+#### 2. Provide a pre-instantiated hooks object
+
+```js
+import { ActionBuilder, ActionRunner } from "@gesslar/actioneer"
+import { MyActionHooks } from "./hooks/MyActionHooks.js"
+
+const hooks = new MyActionHooks({ debug: console.log })
+
+class MyAction {
+  setup(builder) {
+    builder
+      .withHooks(hooks)
+      .do("prepare", ctx => { ctx.count = 0 })
+      .do("work", ctx => { ctx.count += 1 })
+  }
+}
+
+const builder = new ActionBuilder(new MyAction())
+const runner = new ActionRunner(builder)
+const result = await runner.pipe([{}], 4)
+```
+
+### Writing Hooks
+
+Hooks are classes exported from a module. The hook methods follow a naming convention: `event$activityName`.
+
+```js
+// hooks/MyActionHooks.js
+export class MyActionHooks {
+  constructor({ debug }) {
+    this.debug = debug
+  }
+
+  // Hook that runs before the "prepare" activity
+  async before$prepare(context) {
+    this.debug("About to prepare", context)
+  }
+
+  // Hook that runs after the "prepare" activity
+  async after$prepare(context) {
+    this.debug("Finished preparing", context)
+  }
+
+  // Hook that runs before the "work" activity
+  async before$work(context) {
+    this.debug("Starting work", context)
+  }
+
+  // Hook that runs after the "work" activity
+  async after$work(context) {
+    this.debug("Work complete", context)
+  }
+
+  // Optional: setup hook runs once at initialization
+  async setup(args) {
+    this.debug("Hooks initialized")
+  }
+
+  // Optional: cleanup hook for teardown
+  async cleanup(args) {
+    this.debug("Hooks cleaned up")
+  }
+}
+```
+
+### Hook Naming Convention
+
+Activity names are transformed to hook method names:
+
+- Spaces are removed and words are camelCased: `"do work"` → `before$doWork` / `after$doWork`
+- Non-word characters are stripped: `"step-1"` → `before$step1` / `after$step1`
+- First word stays lowercase: `"Prepare Data"` → `before$prepareData` / `after$prepareData`
+
+### Hook Timeout
+
+By default, hooks have a 1-second (1000ms) timeout. If a hook exceeds this timeout, the pipeline will throw a `Sass` error. You can configure the timeout when creating the hooks:
+
+```js
+new ActionHooks({
+  actionKind: "MyActionHooks",
+  hooksFile: "./hooks.js",
+  hookTimeout: 5000, // 5 seconds
+  debug: console.log
+})
+```
+
+### Nested Pipelines and Hooks
+
+When you nest ActionBuilders (for branching or parallel execution), the parent's hooks are automatically passed to all children, ensuring consistent hook behavior throughout the entire pipeline hierarchy.
 
 ### Optional TypeScript (local, opt-in)
 

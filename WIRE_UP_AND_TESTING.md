@@ -328,6 +328,169 @@ const fixturePath = TestUtils.getFixturePath("test.json")
 // Test with copies if you modify files
 ```
 
+### **For ActionHooks:**
+
+```javascript
+import { describe, it } from "node:test"
+import assert from "node:assert/strict"
+import { ActionBuilder, ActionRunner } from "../../src/index.js"
+import { ActionHooks } from "../../src/index.js"
+
+describe("ActionHooks", () => {
+  describe("hook execution", () => {
+    it("calls before and after hooks for activities", async () => {
+      const executionLog = []
+      
+      class TestHooks {
+        constructor({ debug }) {
+          this.debug = debug
+        }
+        
+        async before$work(context) {
+          executionLog.push("before")
+        }
+        
+        async after$work(context) {
+          executionLog.push("after")
+        }
+      }
+      
+      class TestAction {
+        setup(builder) {
+          builder
+            .withHooks(new TestHooks({ debug: () => {} }))
+            .do("work", ctx => {
+              executionLog.push("work")
+              return ctx
+            })
+        }
+      }
+      
+      const builder = new ActionBuilder(new TestAction())
+      const runner = new ActionRunner(builder)
+      await runner.pipe([{}], 1)
+      
+      assert.deepEqual(executionLog, ["before", "work", "after"])
+    })
+    
+    it("handles hook timeout gracefully", async () => {
+      class SlowHooks {
+        constructor({ debug }) {
+          this.debug = debug
+        }
+        
+        async before$work(context) {
+          // This will exceed the default 1s timeout
+          await new Promise(resolve => setTimeout(resolve, 2000))
+        }
+      }
+      
+      class TestAction {
+        setup(builder) {
+          builder
+            .withHooks(new SlowHooks({ debug: () => {} }))
+            .do("work", ctx => ctx)
+        }
+      }
+      
+      const builder = new ActionBuilder(new TestAction())
+      const runner = new ActionRunner(builder)
+      
+      await assert.rejects(
+        () => runner.pipe([{}], 1),
+        /Hook.*exceeded timeout/
+      )
+    })
+    
+    it("loads hooks from file", async () => {
+      // Assumes you have a test hooks file at test/fixtures/TestHooks.js
+      class TestAction {
+        setup(builder) {
+          builder
+            .withHooksFile("./test/fixtures/TestHooks.js", "TestHooks")
+            .do("work", ctx => ctx)
+        }
+      }
+      
+      const builder = new ActionBuilder(new TestAction())
+      const runner = new ActionRunner(builder)
+      const result = await runner.pipe([{ value: 42 }], 1)
+      
+      // Verify hooks were applied (check side effects or context changes)
+      assert.ok(result)
+    })
+  })
+  
+  describe("hook naming convention", () => {
+    it("transforms activity names correctly", () => {
+      // Test the internal hook name generation
+      // "do work" -> "before$doWork" / "after$doWork"
+      // "step-1" -> "before$step1" / "after$step1"
+      // "Prepare Data" -> "before$prepareData" / "after$prepareData"
+    })
+  })
+  
+  describe("nested pipelines", () => {
+    it("passes hooks to nested ActionBuilders", async () => {
+      const executionLog = []
+      
+      class TestHooks {
+        constructor({ debug }) {
+          this.debug = debug
+        }
+        
+        async before$outer(context) {
+          executionLog.push("before-outer")
+        }
+        
+        async before$inner(context) {
+          executionLog.push("before-inner")
+        }
+      }
+      
+      class InnerAction {
+        setup(builder) {
+          builder.do("inner", ctx => {
+            executionLog.push("inner")
+            return ctx
+          })
+        }
+      }
+      
+      class OuterAction {
+        setup(builder) {
+          builder
+            .withHooks(new TestHooks({ debug: () => {} }))
+            .do("outer", ctx => {
+              executionLog.push("outer")
+              return ctx
+            })
+            .do("nested", new ActionBuilder(new InnerAction()))
+        }
+      }
+      
+      const builder = new ActionBuilder(new OuterAction())
+      const runner = new ActionRunner(builder)
+      await runner.pipe([{}], 1)
+      
+      // Verify hooks were called for both outer and inner activities
+      assert.ok(executionLog.includes("before-outer"))
+      assert.ok(executionLog.includes("before-inner"))
+    })
+  })
+})
+```
+
+**Key Testing Considerations for Hooks:**
+
+1. **Test hook execution order**: Verify that `before` hooks run before the activity and `after` hooks run after
+2. **Test hook timeout handling**: Ensure slow hooks properly trigger timeout errors
+3. **Test hook loading**: Verify that hooks can be loaded from files and instantiated correctly
+4. **Test hook naming**: Verify the activity name transformation logic works correctly
+5. **Test nested pipelines**: Ensure hooks propagate to nested ActionBuilders
+6. **Test missing hooks**: Verify that activities run normally when no matching hook exists
+7. **Test hook errors**: Ensure errors thrown in hooks are properly wrapped with Sass
+
 ---
 
 ## 🏃‍♂️ **Testing Workflow**

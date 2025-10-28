@@ -154,6 +154,14 @@ export default class ActionBuilder {
     return this
   }
 
+  /**
+   * Configure hooks to be loaded from a file when the action is built.
+   *
+   * @param {string} hooksFile Path to the hooks module file.
+   * @param {string} hooksKind Name of the exported hooks class to instantiate.
+   * @returns {ActionBuilder} The builder instance for chaining.
+   * @throws {Sass} If hooks have already been configured.
+   */
   withHooksFile(hooksFile, hooksKind) {
     Valid.assert(this.#hooksFile === null, "Hooks have already been configured.")
     Valid.assert(this.#hooksKind === null, "Hooks have already been configured.")
@@ -165,6 +173,13 @@ export default class ActionBuilder {
     return this
   }
 
+  /**
+   * Configure hooks using a pre-instantiated hooks object.
+   *
+   * @param {import("./ActionHooks.js").default} hooks An already-instantiated hooks instance.
+   * @returns {ActionBuilder} The builder instance for chaining.
+   * @throws {Sass} If hooks have already been configured.
+   */
   withHooks(hooks) {
     Valid.assert(this.#hooksFile === null, "Hooks have already been configured.")
     Valid.assert(this.#hooksKind === null, "Hooks have already been configured.")

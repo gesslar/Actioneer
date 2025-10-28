@@ -28,8 +28,8 @@
 /**
  * Fluent builder for describing how an action should process the context that
  * flows through the {@link ActionRunner}. Consumers register named activities,
- * optional hook pairs, and nested parallel pipelines before handing the
- * builder back to the runner for execution.
+ * and nested parallel pipelines before handing the builder back to the runner
+ * for execution.
  *
  * Typical usage:
  *
@@ -76,12 +76,29 @@ export default class ActionBuilder {
    */
   do(name: string | symbol, kind: number, pred: (context: unknown) => boolean | Promise<boolean>, op: ActionFunction | import('./ActionWrapper.js').default): ActionBuilder
   /**
+   * Configure hooks to be loaded from a file when the action is built.
+   *
+   * @param {string} hooksFile Path to the hooks module file.
+   * @param {string} hooksKind Name of the exported hooks class to instantiate.
+   * @returns {ActionBuilder} The builder instance for chaining.
+   * @throws {Sass} If hooks have already been configured.
+   */
+  withHooksFile(hooksFile: string, hooksKind: string): ActionBuilder
+  /**
+   * Configure hooks using a pre-instantiated hooks object.
+   *
+   * @param {import("./ActionHooks.js").default} hooks An already-instantiated hooks instance.
+   * @returns {ActionBuilder} The builder instance for chaining.
+   * @throws {Sass} If hooks have already been configured.
+   */
+  withHooks(hooks: import('./ActionHooks.js').default): ActionBuilder
+  /**
    * Finalises the builder and returns a payload that can be consumed by the
    * runner.
    *
-   * @returns {import("./ActionWrapper.js").default} Payload consumed by the {@link ActionRunner} constructor.
+   * @returns {Promise<import("./ActionWrapper.js").default>} Payload consumed by the {@link ActionRunner} constructor.
    */
-  build(): import('./ActionWrapper.js').default
+  build(): Promise<import('./ActionWrapper.js').default>
   #private
 }
 export type ActionRunner = import('./ActionRunner.js').default
