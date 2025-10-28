@@ -158,8 +158,7 @@ export default class Piper {
       let result = item
 
       for(const step of this.#lifeCycle.get("process")) {
-        if(typeof this.#debug === "function")
-          this.#debug("Executing step: %o", 4, step.name)
+        this.#debug("Executing step: %o", 4, step.name)
 
         result = await step.fn(result) ?? result
       }
