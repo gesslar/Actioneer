@@ -31,7 +31,7 @@ export default class ActionHooks {
   /** @type {string|null} */
   #actionKind = null
   /** @type {number} */
-  #timeout = 1000 // Default 1 second timeout
+  #timeout = 1_000 // Default 1 second timeout
   /** @type {DebugFn|null} */
   #debug = null
 
@@ -40,7 +40,7 @@ export default class ActionHooks {
    *
    * @param {ActionHooksConfig} config Configuration values describing how to load the hooks.
    */
-  constructor({actionKind, hooksFile, hooks, hookTimeout = 1000, debug}) {
+  constructor({actionKind, hooksFile, hooks, hookTimeout = 1_000, debug}) {
     this.#actionKind = actionKind
     this.#hooksFile = hooksFile
     this.#hooks = hooks
@@ -114,42 +114,44 @@ export default class ActionHooks {
   static async new(config, debug) {
     debug("Creating new HookManager instance with args: %o", 2, config)
 
-    const instance = new this(config, debug)
-    const hooksFile = instance.hooksFile
+    const instance = new ActionHooks(config, debug)
+    if(!instance.#hooks) {
+      const hooksFile = new FileObject(instance.#hooksFile)
 
-    debug("Loading hooks from %o", 2, hooksFile.uri)
+      debug("Loading hooks from %o", 2, hooksFile.uri)
 
-    debug("Checking hooks file exists: %o", 2, hooksFile.uri)
-    if(!await hooksFile.exists)
-      throw Sass.new(`No such hooks file, ${hooksFile.uri}`)
+      debug("Checking hooks file exists: %o", 2, hooksFile.uri)
+      if(!await hooksFile.exists)
+        throw Sass.new(`No such hooks file, ${hooksFile.uri}`)
 
-    try {
-      const hooksImport = await hooksFile.import()
+      try {
+        const hooksImport = await hooksFile.import()
 
-      if(!hooksImport)
+        if(!hooksImport)
+          return null
+
+        debug("Hooks file imported successfully as a module", 2)
+
+        const actionKind = instance.actionKind
+        if(!hooksImport[actionKind])
+          return null
+
+        const hooks = new hooksImport[actionKind]({debug})
+
+        debug(hooks.constructor.name, 4)
+
+        instance.#hooks = hooks
+        debug("Hooks %o loaded successfully for %o", 2, hooksFile.uri, instance.actionKind)
+
+        return instance
+      } catch(error) {
+        debug("Failed to load hooks %o: %o", 1, hooksFile.uri, error.message)
+
         return null
-
-      debug("Hooks file imported successfully as a module", 2)
-
-      const actionKind = instance.actionKind
-      if(!hooksImport[actionKind])
-        return null
-
-      const hooks = new hooksImport[actionKind]({debug})
-
-      debug(hooks.constructor.name, 4)
-
-      // Attach common properties to hooks
-      instance.#hooks = hooks
-
-      debug("Hooks %o loaded successfully for %o", 2, hooksFile.uri, instance.actionKind)
-
-      return instance
-    } catch(error) {
-      debug("Failed to load hooks %o: %o", 1, hooksFile.uri, error.message)
-
-      return null
+      }
     }
+
+    return this
   }
 
   /**
@@ -168,7 +170,7 @@ export default class ActionHooks {
       if(!hooks)
         return
 
-      const hookName = `${kind}$${activityName}`
+      const hookName = this.#getActivityHookName(kind, activityName)
 
       debug("Looking for hook: %o", 4, hookName)
 
@@ -210,5 +212,23 @@ export default class ActionHooks {
     } catch(error) {
       throw Sass.new(`Processing hook ${kind}$${activityName}`, error)
     }
+  }
+
+  #getActivityHookName(event, activityName) {
+    const name = activityName
+      .split(" ")
+      .map(a => a.trim())
+      .filter(Boolean)
+      .map(a => a
+        .split("")
+        .filter(b => /[\w]/.test(b))
+        .filter(Boolean)
+        .join("")
+      )
+      .map(a => a.toLowerCase())
+      .map((a, i) => i === 0 ? a : Util.capitalize(a))
+      .join("")
+
+    return `${event}$${name}`
   }
 }

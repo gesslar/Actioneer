@@ -23,14 +23,15 @@ export default class Activity {
   /**
    * Construct an Activity definition wrapper.
    *
-   * @param {{action: unknown, name: string, op: (context: unknown) => unknown|Promise<unknown>|unknown, kind?: number, pred?: (context: unknown) => boolean|Promise<boolean>}} init - Initial properties describing the activity operation, loop semantics, and predicate
+   * @param {{action: unknown, name: string, op: (context: unknown) => unknown|Promise<unknown>|unknown, kind?: number, pred?: (context: unknown) => boolean|Promise<boolean>, hooks?: ActionHooks}} init - Initial properties describing the activity operation, loop semantics, and predicate
    */
-  constructor({action,name,op,kind,pred}) {
+  constructor({action,name,op,kind,pred,hooks}) {
     this.#name = name
     this.#op = op
     this.#kind = kind
     this.#action = action
     this.#pred = pred
+    this.#hooks = hooks
   }
 
   /**
@@ -94,19 +95,14 @@ export default class Activity {
    * @returns {Promise<{activityResult: unknown}>} - Activity result wrapper with new context
    */
   async run(context) {
-    const hooks = this.#hooks
-
     // before hook
-    const before = hooks?.[`before$${this.#name}`]
-    if(Data.typeOf(before) === "Function")
-      await before.call(hooks,context)
+    await this.#hooks?.callHook("before", this.#name, context)
 
+    // not a hook
     const result = await this.#op.call(this.#action,context)
 
     // after hook
-    const after = hooks?.[`after$${this.#name}`]
-    if(Data.typeOf(after) === "Function")
-      await after.call(hooks,context)
+    await this.#hooks?.callHook("after", this.#name, context)
 
     return result
   }

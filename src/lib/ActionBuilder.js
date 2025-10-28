@@ -1,6 +1,7 @@
 import {Data, Sass, Valid} from "@gesslar/toolkit"
 
 import ActionWrapper from "./ActionWrapper.js"
+import ActionHooks from "./ActionHooks.js"
 
 /** @typedef {import("./ActionRunner.js").default} ActionRunner */
 /** @typedef {typeof import("./Activity.js").ACTIVITY} ActivityFlags */
@@ -38,8 +39,8 @@ import ActionWrapper from "./ActionWrapper.js"
 /**
  * Fluent builder for describing how an action should process the context that
  * flows through the {@link ActionRunner}. Consumers register named activities,
- * optional hook pairs, and nested parallel pipelines before handing the
- * builder back to the runner for execution.
+ * and nested parallel pipelines before handing the builder back to the runner
+ * for execution.
  *
  * Typical usage:
  *
@@ -64,6 +65,9 @@ export default class ActionBuilder {
   #debug = null
   /** @type {symbol|null} */
   #tag = null
+  #hooksFile = null
+  #hooksKind = null
+  #hooks = null
 
   /**
    * Creates a new ActionBuilder instance with the provided action callback.
@@ -138,7 +142,7 @@ export default class ActionBuilder {
 
       Valid.type(kind, "Number")
       Valid.type(pred, "Function")
-      Valid.type(op, "Function|ActionWrapper")
+      Valid.type(op, "Function|ActionBuilder")
 
       Object.assign(activityDefinition, {kind, pred, op})
     } else {
@@ -146,6 +150,27 @@ export default class ActionBuilder {
     }
 
     this.#activities.set(name, activityDefinition)
+
+    return this
+  }
+
+  withHooksFile(hooksFile, hooksKind) {
+    Valid.assert(this.#hooksFile === null, "Hooks have already been configured.")
+    Valid.assert(this.#hooksKind === null, "Hooks have already been configured.")
+    Valid.assert(this.#hooks === null, "Hooks have already been configured.")
+
+    this.#hooksFile = hooksFile
+    this.#hooksKind = hooksKind
+
+    return this
+  }
+
+  withHooks(hooks) {
+    Valid.assert(this.#hooksFile === null, "Hooks have already been configured.")
+    Valid.assert(this.#hooksKind === null, "Hooks have already been configured.")
+    Valid.assert(this.#hooks === null, "Hooks have already been configured.")
+
+    this.#hooks = hooks
 
     return this
   }
@@ -167,9 +192,9 @@ export default class ActionBuilder {
    * Finalises the builder and returns a payload that can be consumed by the
    * runner.
    *
-   * @returns {import("./ActionWrapper.js").default} Payload consumed by the {@link ActionRunner} constructor.
+   * @returns {Promise<import("./ActionWrapper.js").default>} Payload consumed by the {@link ActionRunner} constructor.
    */
-  build() {
+  async build() {
     const action = this.#action
 
     if(!action.tag) {
@@ -178,9 +203,27 @@ export default class ActionBuilder {
       action.setup.call(action, this)
     }
 
+    // All children in a branch also get the same hooks.
+    const hooks = await this.#getHooks()
+
     return new ActionWrapper({
       activities: this.#activities,
       debug: this.#debug,
+      hooks,
     })
+  }
+
+  async #getHooks() {
+    const newHooks = ActionHooks.new
+
+    const hooks = this.#hooks
+    if(hooks)
+      return await newHooks({hooks}, this.#debug)
+
+    const hooksFile = this.#hooksFile
+    const hooksKind = this.#hooksKind
+
+    if(hooksFile && hooksKind)
+      return await newHooks({hooksFile,hooksKind}, this.#debug)
   }
 }
