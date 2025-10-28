@@ -31,13 +31,16 @@ export default class ActionWrapper {
    */
   #debug = () => {}
 
+  #hooks = null
+
   /**
    * Create a wrapper from the builder payload.
    *
    * @param {{activities: Map<string|symbol, WrappedActivityConfig>, debug: (message: string, level?: number, ...args: Array<unknown>) => void}} init Builder payload containing activities + logger.
    */
-  constructor({activities,debug}) {
+  constructor({activities,hooks,debug}) {
     this.#debug = debug
+    this.#hooks = hooks
     this.#activities = activities
     this.#debug(
       "Instantiating ActionWrapper with %o activities.",
@@ -48,7 +51,7 @@ export default class ActionWrapper {
 
   *#_activities() {
     for(const [,activity] of this.#activities)
-      yield new Activity(activity)
+      yield new Activity({...activity, hooks: this.#hooks})
   }
 
   /**

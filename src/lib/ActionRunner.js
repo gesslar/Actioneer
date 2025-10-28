@@ -1,10 +1,8 @@
-import {FileObject, Sass, Valid} from "@gesslar/toolkit"
+import {Sass, Valid} from "@gesslar/toolkit"
 
 import ActionBuilder from "./ActionBuilder.js"
 import {ACTIVITY} from "./Activity.js"
 import Piper from "./Piper.js"
-
-/** @typedef {import("./ActionHooks.js").default} ActionHooks */
 
 /**
  * @typedef {(message: string, level?: number, ...args: Array<unknown>) => void} DebugFn
@@ -12,7 +10,6 @@ import Piper from "./Piper.js"
 
 /**
  * @typedef {object} ActionRunnerOptions
- * @property {ActionHooks} [hooks] Pre-configured hooks.
  * @property {DebugFn} [debug] Logger function.
  */
 /**
@@ -23,68 +20,33 @@ import Piper from "./Piper.js"
  * context object under `result.value` that can be replaced or enriched.
  */
 export default class ActionRunner extends Piper {
-  /**
-   * Pipeline produced by the builder.
-   *
-   * @type {import("./ActionWrapper.js").default|null}
-   */
-  #actionWrapper = null
+  #actionBuilder = null
+
   /**
    * Logger invoked for diagnostics.
    *
    * @type {DebugFn}
    */
   #debug = () => {}
-  /**
-   * Filesystem path to a hooks module.
-   *
-   * @type {string|null}
-   */
-  #hooksPath = null
-  /**
-   * Constructor name exported by the hooks module.
-   *
-   * @type {string|null}
-   */
-  #hooksClassName = null
-  /**
-   * Lazily instantiated hooks implementation.
-   *
-   * @type {ActionHooks|null}
-   */
-  #hooks = null
-  /**
-   * Unique tag for log correlation.
-   *
-   * @type {symbol|null}
-   */
-  #tag = null
 
   /**
    * Instantiate a runner over an optional action wrapper.
    *
-   * @param {import("./ActionWrapper.js").default|null} wrappedAction Output of {@link ActionBuilder#build}.
-   * @param {ActionRunnerOptions} [options] Optional hooks/debug overrides.
+   * @param {import("./ActionBuilder.js").default|null} actionBuilder ActionBuilder to build.
+   * @param {ActionRunnerOptions} [options] Optional debug overrides.
    */
-  constructor(wrappedAction, {hooks,debug=(() => {})} = {}) {
+  constructor(actionBuilder, {debug=(() => {})} = {}) {
     super({debug})
-
-    this.#tag = Symbol(performance.now())
 
     this.#debug = debug
 
-    if(!wrappedAction)
+    if(!actionBuilder)
       return this
 
-    if(wrappedAction?.constructor?.name !== "ActionWrapper")
-      throw Sass.new("ActionRunner takes an instance of an ActionWrapper")
+    if(actionBuilder?.constructor?.name !== "ActionBuilder")
+      throw Sass.new("ActionRunner takes an instance of an ActionBuilder")
 
-    this.#actionWrapper = wrappedAction
-
-    if(hooks)
-      this.#hooks = hooks
-    else
-      this.addSetup(this.#loadHooks)
+    this.#actionBuilder = actionBuilder
 
     this.addStep(this.run)
   }
@@ -97,13 +59,10 @@ export default class ActionRunner extends Piper {
    * @throws {Sass} When no activities are registered or required parallel builders are missing.
    */
   async run(context) {
-    this.#debug(this.#tag.description)
-    const actionWrapper = this.#actionWrapper
+    const actionWrapper = await this.#actionBuilder.build()
     const activities = actionWrapper.activities
 
     for(const activity of activities) {
-      activity.setActionHooks(this.#hooks)
-
       const kind = activity.kind
 
       // If we have no kind, then it's just a once.
@@ -112,7 +71,6 @@ export default class ActionRunner extends Piper {
         context = await this.#executeActivity(activity, context)
       } else {
         const {WHILE,UNTIL} = ACTIVITY
-
         const pred = activity.pred
         const kindWhile = kind & WHILE
         const kindUntil = kind & UNTIL
@@ -156,21 +114,17 @@ export default class ActionRunner extends Piper {
    */
   async #executeActivity(activity, context) {
     // What kind of op are we looking at? Is it a function?
-    // Or a class instance of type ActionWrapper?
+    // Or a class instance of type ActionBuilder?
     const opKind = activity.opKind
-    if(opKind === "ActionWrapper") {
-      const runner = new this.constructor(activity.op, {
-        debug: this.#debug,
-        hooks: this.#hooks,
-      })
-        .setHooks(this.#hooksPath, this.#hooksClassName)
+    if(opKind === "ActionBuilder") {
+      const runner = new this.constructor(activity.op, {debug: this.#debug})
 
       return await runner.run(context, true)
     } else if(opKind === "Function") {
       return await activity.run(context)
     }
 
-    throw Sass.new("We buy Functions and ActionWrappers. Only. Not whatever that was.")
+    throw Sass.new("We buy Functions and ActionBuilders. Only. Not whatever that was.")
   }
 
   /**
@@ -190,47 +144,5 @@ export default class ActionRunner extends Piper {
 
   toString() {
     return `[object ${this.constructor.name}]`
-  }
-
-  /**
-   * Configure hooks to be lazily loaded when the pipeline runs.
-   *
-   * @param {string} hooksPath Absolute path to the module exporting the hooks class.
-   * @param {string} className Constructor to instantiate from the hooks module.
-   * @returns {this} Runner instance for chaining.
-   */
-  setHooks(hooksPath, className) {
-    this.#hooksPath = hooksPath
-    this.#hooksClassName = className
-
-    this.addSetup(() => this.#loadHooks())
-
-    return this
-  }
-
-  /**
-   * Import and instantiate the configured hooks module.
-   *
-   * @returns {Promise<null|void>} Null when hooks are disabled, otherwise void.
-   * @private
-   */
-  async #loadHooks() {
-    if(!this.#hooksPath)
-      return null
-
-    const file = new FileObject(this.#hooksPath)
-    if(!await file.exists)
-      throw Sass.new(`File '${file.uri} does not exist.`)
-
-    const module = await file.import()
-    const hooksClassName = this.#hooksClassName
-
-    Valid.type(module[hooksClassName], "Function")
-
-    const loaded = new module[hooksClassName]({
-      debug: this.#debug
-    })
-
-    this.#hooks = loaded
   }
 }
