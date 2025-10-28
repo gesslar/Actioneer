@@ -1,5 +1,5 @@
 import {setTimeout as timeout} from "timers/promises"
-import {FileObject, Sass, Util, Valid} from "@gesslar/toolkit"
+import {Data, FileObject, Sass, Util, Valid} from "@gesslar/toolkit"
 
 /**
  * @typedef {(message: string, level?: number, ...args: Array<unknown>) => void} DebugFn
@@ -170,7 +170,11 @@ export default class ActionHooks {
       if(!hooks)
         return
 
-      const hookName = this.#getActivityHookName(kind, activityName)
+      const stringActivityName = Data.isType("Symbol")
+        ? activityName.description()
+        : activityName
+
+      const hookName = this.#getActivityHookName(kind, stringActivityName)
 
       debug("Looking for hook: %o", 4, hookName)
 

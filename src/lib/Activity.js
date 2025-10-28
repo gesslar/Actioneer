@@ -1,5 +1,7 @@
 import {Data} from "@gesslar/toolkit"
 
+/** @typedef {import("./ActionHooks.js").default} ActionHooks */
+
 /**
  * Activity bit flags recognised by the builder. The flag decides
  * loop semantics for an activity.

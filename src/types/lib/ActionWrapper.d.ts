@@ -19,7 +19,7 @@ export default class ActionWrapper {
    *
    * @param {{activities: Map<string|symbol, WrappedActivityConfig>, debug: (message: string, level?: number, ...args: Array<unknown>) => void}} init Builder payload containing activities + logger.
    */
-  constructor({ activities, debug }: {
+  constructor({ activities, hooks, debug }: {
     activities: Map<string | symbol, WrappedActivityConfig>;
     debug: (message: string, level?: number, ...args: Array<unknown>) => void;
   })

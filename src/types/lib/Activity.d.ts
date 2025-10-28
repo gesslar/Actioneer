@@ -3,6 +3,7 @@
  * loop semantics for an activity.
  */
 export type ACTIVITY = number
+/** @typedef {import("./ActionHooks.js").default} ActionHooks */
 /**
  * Activity bit flags recognised by the builder. The flag decides
  * loop semantics for an activity.
@@ -18,14 +19,15 @@ export default class Activity {
   /**
    * Construct an Activity definition wrapper.
    *
-   * @param {{action: unknown, name: string, op: (context: unknown) => unknown|Promise<unknown>|unknown, kind?: number, pred?: (context: unknown) => boolean|Promise<boolean>}} init - Initial properties describing the activity operation, loop semantics, and predicate
+   * @param {{action: unknown, name: string, op: (context: unknown) => unknown|Promise<unknown>|unknown, kind?: number, pred?: (context: unknown) => boolean|Promise<boolean>, hooks?: ActionHooks}} init - Initial properties describing the activity operation, loop semantics, and predicate
    */
-  constructor({ action, name, op, kind, pred }: {
+  constructor({ action, name, op, kind, pred, hooks }: {
     action: unknown;
     name: string;
     op: (context: unknown) => unknown | Promise<unknown> | unknown;
     kind?: number;
     pred?: (context: unknown) => boolean | Promise<boolean>;
+    hooks?: ActionHooks;
   })
   /**
    * The activity name.
@@ -81,4 +83,5 @@ export default class Activity {
   setActionHooks(hooks: unknown): this
   #private
 }
+export type ActionHooks = import('./ActionHooks.js').default
 //# sourceMappingURL=Activity.d.ts.map
