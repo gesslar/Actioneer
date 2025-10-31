@@ -83,10 +83,13 @@ export default class ActionRunner extends Piper {
         if(!kind) {
           context = await this.#execute(activity, context)
         } else {
-          if((kind & (kind - 1)) !== 0 && kind === 0)
+          // Validate that only one activity kind bit is set
+          // (kind & (kind - 1)) !== 0 means multiple bits are set
+          const multipleBitsSet = (kind & (kind - 1)) !== 0
+          if(multipleBitsSet)
             throw Sass.new(
-              "For Kathy Griffin's sake! You can't do something while AND " +
-              "until. Pick one! Also, forget about splitting. Not. Happening."
+              "For Kathy Griffin's sake! You can't combine activity kinds. " +
+              "Pick one: WHILE, UNTIL, or SPLIT!"
             )
 
           const {WHILE,UNTIL,SPLIT} = ACTIVITY
@@ -110,9 +113,14 @@ export default class ActionRunner extends Piper {
                   break
             }
           } else if(kindSplit && activity.opKind === "ActionBuilder") {
-            // Ok, let's get some deets, mofo!
+            // SPLIT activity: parallel execution with splitter/rejoiner pattern
             const splitter = activity.splitter
             const rejoiner = activity.rejoiner
+
+            if(!splitter || !rejoiner)
+              throw Sass.new(
+                `SPLIT activity "${String(activity.name)}" requires both splitter and rejoiner functions.`
+              )
 
             const original = context
             const splitContext = splitter.call(activity.action,context)
@@ -137,11 +145,15 @@ export default class ActionRunner extends Piper {
    * Handles both function-based activities and ActionBuilder-based nested pipelines.
    * Automatically propagates hooks to nested builders and handles dynamic ActionBuilder returns.
    *
+   * When parallel=true, uses Piper.pipe() for concurrent execution with worker pool pattern.
+   * This is triggered by SPLIT activities where context is divided for parallel processing.
+   * Results from parallel execution are filtered to only include successful outcomes ({ok: true}).
+   *
    * @param {import("./Activity.js").default} activity Pipeline activity descriptor.
    * @param {unknown} context Current pipeline context.
-   * @param {boolean} [parallel] Whether to use parallel execution (via pipe() instead of run()).
+   * @param {boolean} [parallel] Whether to use parallel execution (via pipe() instead of run()). Default: false.
    * @returns {Promise<unknown>} Resolved activity result.
-   * @throws {Sass} If the operation kind is invalid.
+   * @throws {Sass} If the operation kind is invalid, or if SPLIT activity lacks splitter/rejoiner.
    * @private
    */
   async #execute(activity, context, parallel=false) {

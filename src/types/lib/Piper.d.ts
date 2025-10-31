@@ -42,12 +42,24 @@ export default class Piper {
    * Workers are spawned up to maxConcurrent limit, and as workers complete, new workers
    * are spawned to maintain concurrency until all items are processed.
    *
+   * This implementation uses dynamic worker spawning to maintain concurrency:
+   * - Initial workers are spawned up to maxConcurrent limit
+   * - As each worker completes (success OR failure), a replacement worker is spawned if items remain
+   * - Worker spawning occurs in finally block to ensure resilience to individual worker failures
+   * - All results are collected with {ok, value} or {ok: false, error} structure
+   * - Processing continues even if individual workers fail, collecting all errors
+   *
    * @param {Array<unknown>|unknown} items - Items to process
-   * @param {number} [maxConcurrent] - Maximum concurrent items to process
-   * @returns {Promise<Array<unknown>>} - Collected results from all processed items
-   * @throws {Sass} If setup, processing, or teardown fails
+   * @param {number} [maxConcurrent] - Maximum concurrent items to process (default: 10)
+   * @returns {Promise<Array<{ok: boolean, value?: unknown, error?: Sass}>>} - Results with success/failure status
+   * @throws {Sass} If setup or teardown fails
    */
-  pipe(items: Array<unknown> | unknown, maxConcurrent?: number): Promise<Array<unknown>>
+  pipe(items: Array<unknown> | unknown, maxConcurrent?: number): Promise<Array<{
+    ok: boolean;
+    value?: unknown;
+    error?: Sass;
+  }>>
   #private
 }
+import { Sass } from '@gesslar/toolkit'
 //# sourceMappingURL=Piper.d.ts.map
