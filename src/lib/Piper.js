@@ -96,14 +96,12 @@ export default class Piper {
       ? items
       : [items]
 
-    const allResults = []
-    const allErrors = []
+    const pipeResult = []
+
     let pendingCount = 0
     let resolveAll
-    let rejectAll
-    const allDone = new Promise((resolve, reject) => {
+    const allDone = new Promise(resolve => {
       resolveAll = resolve
-      rejectAll = reject
     })
 
     /**
@@ -112,16 +110,11 @@ export default class Piper {
      * @private
      */
     const processWorker = async() => {
-      // Check if there are any items left to process
       if(items.length === 0) {
         pendingCount--
 
-        if(pendingCount === 0) {
-          if(allErrors.length > 0)
-            rejectAll(allErrors)
-          else
-            resolveAll()
-        }
+        if(pendingCount === 0)
+          resolveAll()
 
         return
       }
@@ -130,23 +123,20 @@ export default class Piper {
 
       try {
         const result = await this.#processWorker(item)
-        allResults.push(result)
-
+        pipeResult.push({ok: true, value: result})
+      } catch(error) {
+        pipeResult.push({ok: false, error: Sass.new("Processing pipeline item.", error)})
+      } finally {
         // Spawn a replacement worker if there are more items
         if(items.length > 0) {
           pendingCount++
           processWorker() // Don't await - let it run in parallel
         }
-      } catch(error) {
-        allErrors.push(Sass.new("Processing pipeline item.", error))
-      } finally {
-        pendingCount--
-        if(pendingCount === 0) {
-          if(allErrors.length > 0)
-            rejectAll(allErrors)
-          else
-            resolveAll()
-        }
+
+        if(--pendingCount === 0)
+          resolveAll()
+
+        this.#debug("pendingCount = %o", 2, pendingCount)
       }
     }
 
@@ -178,7 +168,7 @@ export default class Piper {
       this.#processResult("Tearing down the pipeline.", teardownResult)
     }
 
-    return allResults
+    return pipeResult
   }
 
   /**
