@@ -73,91 +73,60 @@ export default class ActionRunner extends Piper {
     const activities = actionWrapper.activities
 
     for(const activity of activities) {
-      // await timeout(500)
+      try {
+        // await timeout(500)
 
-      const kind = activity.kind
+        const kind = activity.kind
 
-      // If we have no kind, then it's just a once.
-      // Get it over and done with!
-      if(!kind) {
-        context = await this.#executeActivity(activity, context)
-      } else {
-        // Check if multiple activity kind bits are set (invalid)
-        // Using bit trick: (kind & (kind - 1)) !== 0 means multiple bits set
-        // But we also need to ensure kind !== 0 (at least one bit set)
-        const multipleBitsSet = (kind & (kind - 1)) !== 0
-        if(multipleBitsSet)
-          throw Sass.new(
-            "For Kathy Griffin's sake! You can't combine activity kinds. " +
-            "Pick one: WHILE, UNTIL, or SPLIT!"
-          )
-
-        const {WHILE,UNTIL,SPLIT} = ACTIVITY
-        const kindWhile = kind & WHILE
-        const kindUntil = kind & UNTIL
-        const kindSplit = kind & SPLIT
-
-        if(kindWhile || kindUntil) {
-          const activityPredicate = activity.pred
-
-          for(;;) {
-
-            if(kindWhile) {
-              const shouldContinue = await this.#predicateCheck(
-                activity,
-                activityPredicate,
-                context,
-              )
-
-              if(!shouldContinue) {
-                break
-              }
-            }
-
-            context = await this.#executeActivity(activity,context)
-
-            if(kindUntil) {
-              const shouldContinue = await this.#predicateCheck(
-                activity,
-                activityPredicate,
-                context,
-              )
-
-              if(!shouldContinue) {
-                break
-              }
-            }
-          }
-        } else if(kindSplit && activity.opKind === "ActionBuilder") {
-          // Split activity: execute with split/rejoin pattern for parallel processing
-          const splitter = activity.splitter
-          const rejoiner = activity.rejoiner
-
-          // Validate that both splitter and rejoiner are provided
-          if(!splitter || !rejoiner)
+        // If we have no kind, then it's just a once.
+        // Get it over and done with!
+        if(!kind) {
+          context = await this.#executeActivity(activity, context)
+        } else {
+          if((kind & (kind - 1)) !== 0 && kind === 0)
             throw Sass.new(
-              `SPLIT activity "${String(activity.name)}" requires both splitter and rejoiner functions.`
+              "For Kathy Griffin's sake! You can't do something while AND " +
+              "until. Pick one! Also, forget about splitting. Not. Happening."
             )
 
-          const originalContext = context
-          const splitContext = splitter.call(activity.action,context)
-          const recontexted = await this.#executeActivity(
-            activity,
-            splitContext,
-            true,
-          )
-          const rejoined = rejoiner.call(
-            activity.action,
-            originalContext,
-            recontexted,
-          )
+          const {WHILE,UNTIL,SPLIT} = ACTIVITY
+          const kindWhile = kind & WHILE
+          const kindUntil = kind & UNTIL
+          const kindSplit = kind & SPLIT
 
-          context = rejoined
-        } else {
-          context = await this.#executeActivity(activity, context)
+          if(kindWhile || kindUntil) {
+            const activityPredicate = activity.pred
+
+            for(;;) {
+
+              if(kindWhile)
+                if(!await this.#predicateCheck(activity,activityPredicate,context))
+                  break
+
+              context = await this.#executeActivity(activity,context)
+
+              if(kindUntil)
+                if(!await this.#predicateCheck(activity,activityPredicate,context))
+                  break
+            }
+          } else if(kindSplit && activity.opKind === "ActionBuilder") {
+            // Ok, let's get some deets, mofo!
+            const splitter = activity.splitter
+            const rejoiner = activity.rejoiner
+
+            const originalContext = context
+            const splitContext = splitter.call(activity.action,context)
+            const recontexted = await this.#executeActivity(activity,splitContext,true)
+            const rejoined = rejoiner.call(activity.action, originalContext,recontexted)
+
+            context = rejoined
+          } else {
+            context = await this.#executeActivity(activity, context)
+          }
         }
+      } catch(error) {
+        throw Sass.new("ActionRunner running activity", error)
       }
-
     }
 
     return context
@@ -175,43 +144,50 @@ export default class ActionRunner extends Piper {
    * @throws {Sass} If the operation kind is invalid.
    * @private
    */
-  async #executeActivity(activity, context, parallel = false) {
+  async #executeActivity(activity, context, parallel=false) {
     // What kind of op are we looking at? Is it a function?
     // Or a class instance of type ActionBuilder?
     const opKind = activity.opKind
 
     if(opKind === "ActionBuilder") {
-      if(activity.hooks && !activity.op.hasActionHooks) {
+      if(activity.hooks && !activity.op.hasActionHooks)
         activity.op.withActionHooks(activity.hooks)
-      }
 
-      const runner = new this.constructor(
-        activity.op,
-        {debug: this.#debug, name: activity.name},
-      )
-      if(parallel)
-        return await runner.pipe(context)
-      else
-        return await runner.run(context)
-    } else if(opKind === "Function") {
-      const result = await activity.run(context)
+      const runner = new this.constructor(activity.op, {debug: this.#debug, name: activity.name})
 
-      if(Data.isType(result, "ActionBuilder")) {
-        if(activity.hooks)
-          result.withActionHooks(activity.hooks)
+      if(parallel) {
+        const piped = await runner.pipe(context)
 
-        const runner = new this.constructor(result, {
-          debug: this.#debug, name: result.name
-        })
-
-        if(parallel)
-          return await runner.pipe(context)
-        else
-          return await runner.run(context)
+        return piped.filter(p => p.ok).map(p => p.value)
       } else {
-        return result
+        return await runner.run(context)
+      }
+    } else if(opKind === "Function") {
+      try {
+        const result = await activity.run(context)
+
+        if(Data.isType(result, "ActionBuilder")) {
+          if(activity.hooks)
+            result.withActionHooks(activity.hooks)
+
+          const runner = new this.constructor(result, {debug: this.#debug, name: result.name})
+
+          if(parallel) {
+            const piped = await runner.pipe(context)
+
+            return piped.filter(p => p.ok).map(p => p.value)
+          } else {
+            return await runner.run(context)
+          }
+        } else {
+          return result
+        }
+      } catch(error) {
+        throw Sass.new("Executing activity", error)
       }
     }
+
+    console.log(activity.opKind + " " + JSON.stringify(activity))
 
     throw Sass.new("We buy Functions and ActionBuilders. Only. Not whatever that was.")
   }
