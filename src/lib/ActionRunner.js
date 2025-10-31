@@ -81,7 +81,7 @@ export default class ActionRunner extends Piper {
         // If we have no kind, then it's just a once.
         // Get it over and done with!
         if(!kind) {
-          context = await this.#executeActivity(activity, context)
+          context = await this.#execute(activity, context)
         } else {
           if((kind & (kind - 1)) !== 0 && kind === 0)
             throw Sass.new(
@@ -95,18 +95,18 @@ export default class ActionRunner extends Piper {
           const kindSplit = kind & SPLIT
 
           if(kindWhile || kindUntil) {
-            const activityPredicate = activity.pred
+            const predicate = activity.pred
 
             for(;;) {
 
               if(kindWhile)
-                if(!await this.#predicateCheck(activity,activityPredicate,context))
+                if(!await this.#hasPredicate(activity,predicate,context))
                   break
 
-              context = await this.#executeActivity(activity,context)
+              context = await this.#execute(activity,context)
 
               if(kindUntil)
-                if(!await this.#predicateCheck(activity,activityPredicate,context))
+                if(!await this.#hasPredicate(activity,predicate,context))
                   break
             }
           } else if(kindSplit && activity.opKind === "ActionBuilder") {
@@ -114,14 +114,14 @@ export default class ActionRunner extends Piper {
             const splitter = activity.splitter
             const rejoiner = activity.rejoiner
 
-            const originalContext = context
+            const original = context
             const splitContext = splitter.call(activity.action,context)
-            const recontexted = await this.#executeActivity(activity,splitContext,true)
-            const rejoined = rejoiner.call(activity.action, originalContext,recontexted)
+            const newContext = await this.#execute(activity,splitContext,true)
+            const rejoined = rejoiner.call(activity.action, original,newContext)
 
             context = rejoined
           } else {
-            context = await this.#executeActivity(activity, context)
+            context = await this.#execute(activity, context)
           }
         }
       } catch(error) {
@@ -144,7 +144,7 @@ export default class ActionRunner extends Piper {
    * @throws {Sass} If the operation kind is invalid.
    * @private
    */
-  async #executeActivity(activity, context, parallel=false) {
+  async #execute(activity, context, parallel=false) {
     // What kind of op are we looking at? Is it a function?
     // Or a class instance of type ActionBuilder?
     const opKind = activity.opKind
@@ -153,7 +153,9 @@ export default class ActionRunner extends Piper {
       if(activity.hooks && !activity.op.hasActionHooks)
         activity.op.withActionHooks(activity.hooks)
 
-      const runner = new this.constructor(activity.op, {debug: this.#debug, name: activity.name})
+      const runner = new this.constructor(activity.op, {
+        debug: this.#debug, name: activity.name
+      })
 
       if(parallel) {
         const piped = await runner.pipe(context)
@@ -170,7 +172,9 @@ export default class ActionRunner extends Piper {
           if(activity.hooks)
             result.withActionHooks(activity.hooks)
 
-          const runner = new this.constructor(result, {debug: this.#debug, name: result.name})
+          const runner = new this.constructor(result, {
+            debug: this.#debug, name: result.name
+          })
 
           if(parallel) {
             const piped = await runner.pipe(context)
@@ -201,7 +205,7 @@ export default class ActionRunner extends Piper {
    * @returns {Promise<boolean>} True when the predicate allows another iteration.
    * @private
    */
-  async #predicateCheck(activity,predicate,context) {
+  async #hasPredicate(activity,predicate,context) {
     Valid.type(predicate, "Function")
 
     return !!(await predicate.call(activity.action, context))
