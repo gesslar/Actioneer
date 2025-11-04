@@ -91,7 +91,7 @@ export default class ActionRunner extends Piper {
             context = await this.#executeActivity(activity,context)
 
             if(kindUntil)
-              if(!await this.#predicateCheck(activity,pred,context))
+              if(await this.#predicateCheck(activity,pred,context))
                 break
           }
         } else {
