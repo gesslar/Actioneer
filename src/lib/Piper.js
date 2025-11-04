@@ -41,7 +41,7 @@ export default class Piper {
     this.#lifeCycle.get("process").add({
       fn: fn.bind(newThis ?? this),
       name: options.name || `Step ${this.#lifeCycle.get("process").size + 1}`,
-      required: !!options.required, // Default to required
+      required: options.required ?? true,
       ...options
     })
 
@@ -110,22 +110,24 @@ export default class Piper {
     )
     this.#processResult("Setting up the pipeline.", setupResult)
 
-    // Start workers up to maxConcurrent limit
-    const workers = []
-    const workerCount = Math.min(maxConcurrent, items.length)
+    try {
+      // Start workers up to maxConcurrent limit
+      const workers = []
+      const workerCount = Math.min(maxConcurrent, items.length)
 
-    for(let i = 0; i < workerCount; i++)
-      workers.push(processWorker())
+      for(let i = 0; i < workerCount; i++)
+        workers.push(processWorker())
 
-    // Wait for all workers to complete
-    const processResult = await Util.settleAll(workers)
-    this.#processResult("Processing pipeline.", processResult)
-
-    // Run cleanup hooks
-    const teardownResult = await Util.settleAll(
-      [...this.#lifeCycle.get("teardown")].map(e => e())
-    )
-    this.#processResult("Tearing down the pipeline.", teardownResult)
+      // Wait for all workers to complete
+      const processResult = await Util.settleAll(workers)
+      this.#processResult("Processing pipeline.", processResult)
+    } finally {
+      // Run cleanup hooks
+      const teardownResult = await Util.settleAll(
+        [...this.#lifeCycle.get("teardown")].map(e => e())
+      )
+      this.#processResult("Tearing down the pipeline.", teardownResult)
+    }
 
     return allResults
   }
@@ -153,19 +155,20 @@ export default class Piper {
    * @private
    */
   async #processItem(item) {
-    try {
-      // Execute each step in sequence
-      let result = item
+    // Execute each step in sequence
+    let result = item
 
-      for(const step of this.#lifeCycle.get("process")) {
-        this.#debug("Executing step: %o", 4, step.name)
+    for(const step of this.#lifeCycle.get("process")) {
+      this.#debug("Executing step: %o", 4, step.name)
 
+      try {
         result = await step.fn(result) ?? result
+      } catch(error) {
+        if(step.required)
+          throw Sass.new(`Processing required step "${step.name}".`, error)
       }
-
-      return result
-    } catch(error) {
-      throw Sass.new("Processing an item.", error)
     }
+
+    return result
   }
 }
