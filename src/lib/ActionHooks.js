@@ -7,11 +7,10 @@ import {Data, FileObject, Sass, Util, Valid} from "@gesslar/toolkit"
 
 /**
  * @typedef {object} ActionHooksConfig
- * @property {string} actionKind Action identifier shared between runner and hooks.
- * @property {FileObject} hooksFile File handle used to import the hooks module.
- * @property {unknown} [hooks] Already-instantiated hooks implementation (skips loading).
+ * @property {string} [actionKind] Action identifier shared between runner and hooks.
+ * @property {FileObject|string} [hooksFile] File handle or path used to import the hooks module.
+ * @property {unknown} [hooksObject] Already-instantiated hooks implementation (skips loading).
  * @property {number} [hookTimeout] Timeout applied to hook execution in milliseconds.
- * @property {DebugFn} debug Logger to emit diagnostics.
  */
 
 /**
@@ -27,7 +26,7 @@ export default class ActionHooks {
   /** @type {FileObject|null} */
   #hooksFile = null
   /** @type {HookModule|null} */
-  #hooks = null
+  #hooksObject = null
   /** @type {string|null} */
   #actionKind = null
   /** @type {number} */
@@ -39,11 +38,15 @@ export default class ActionHooks {
    * Creates a new ActionHook instance.
    *
    * @param {ActionHooksConfig} config Configuration values describing how to load the hooks.
+   * @param {(message: string, level?: number, ...args: Array<unknown>) => void} debug Debug function
    */
-  constructor({actionKind, hooksFile, hooks, hookTimeout = 1_000, debug}) {
+  constructor(
+    {actionKind, hooksFile, hooksObject, hookTimeout = 1_000},
+    debug,
+  ) {
     this.#actionKind = actionKind
     this.#hooksFile = hooksFile
-    this.#hooks = hooks
+    this.#hooksObject = hooksObject
     this.#timeout = hookTimeout
     this.#debug = debug
   }
@@ -51,7 +54,7 @@ export default class ActionHooks {
   /**
    * Gets the action identifier.
    *
-   * @returns {string} Action identifier or instance
+   * @returns {string|null} Action identifier or instance
    */
   get actionKind() {
     return this.#actionKind
@@ -60,7 +63,7 @@ export default class ActionHooks {
   /**
    * Gets the hooks file object.
    *
-   * @returns {FileObject} File object containing hooks
+   * @returns {FileObject|null} File object containing hooks
    */
   get hooksFile() {
     return this.#hooksFile
@@ -69,10 +72,10 @@ export default class ActionHooks {
   /**
    * Gets the loaded hooks object.
    *
-   * @returns {object|null} Hooks object or null if not loaded
+   * @returns {HookModule|null} Hooks object or null if not loaded
    */
   get hooks() {
-    return this.#hooks
+    return this.#hooksObject
   }
 
   /**
@@ -105,17 +108,17 @@ export default class ActionHooks {
   /**
    * Static factory method to create and initialize a hook manager.
    * Loads hooks from the specified file and returns an initialized instance.
-   * Override loadHooks() in subclasses to customize hook loading logic.
+   * If a hooksObject is provided in config, it's used directly; otherwise, hooks are loaded from file.
    *
-   * @param {ActionHooksConfig} config Same configuration object as constructor
+   * @param {ActionHooksConfig} config Configuration object with hooks settings
    * @param {DebugFn} debug The debug function.
-   * @returns {Promise<ActionHooks|null>} Initialized hook manager or null if no hooks found
+   * @returns {Promise<ActionHooks>} Initialized hook manager
    */
   static async new(config, debug) {
     debug("Creating new HookManager instance with args: %o", 2, config)
 
     const instance = new ActionHooks(config, debug)
-    if(!instance.#hooks) {
+    if(!instance.#hooksObject) {
       const hooksFile = new FileObject(instance.#hooksFile)
 
       debug("Loading hooks from %o", 2, hooksFile.uri)
@@ -140,7 +143,7 @@ export default class ActionHooks {
 
         debug(hooks.constructor.name, 4)
 
-        instance.#hooks = hooks
+        instance.#hooksObject = hooks
         debug("Hooks %o loaded successfully for %o", 2, hooksFile.uri, instance.actionKind)
 
         return instance
@@ -151,31 +154,34 @@ export default class ActionHooks {
       }
     }
 
-    return this
+    return instance
   }
 
   /**
-   * Invoke a dynamically-named hook such as `before$foo`.
+   * Invoke a dynamically-named hook such as `before$foo` or `after$foo`.
+   * The hook name is constructed by combining the kind with the activity name.
+   * Symbols are converted to their description. Non-alphanumeric characters are filtered out.
    *
    * @param {'before'|'after'|'setup'|'cleanup'|string} kind Hook namespace.
    * @param {string|symbol} activityName Activity identifier.
    * @param {unknown} context Pipeline context supplied to the hook.
    * @returns {Promise<void>}
+   * @throws {Sass} If the hook execution fails or exceeds timeout.
    */
   async callHook(kind, activityName, context) {
+    const debug = this.#debug
+    const hooks = this.#hooksObject
+
+    if(!hooks)
+      return
+
+    const stringActivityName = Data.isType(activityName, "Symbol")
+      ? activityName.description()
+      : activityName
+
+    const hookName = this.#getActivityHookName(kind, stringActivityName)
+
     try {
-      const debug = this.#debug
-      const hooks = this.#hooks
-
-      if(!hooks)
-        return
-
-      const stringActivityName = Data.isType("Symbol")
-        ? activityName.description()
-        : activityName
-
-      const hookName = this.#getActivityHookName(kind, stringActivityName)
-
       debug("Looking for hook: %o", 4, hookName)
 
       const hook = hooks[hookName]
@@ -189,7 +195,7 @@ export default class ActionHooks {
         debug("Hook function starting execution: %o", 4, hookName)
 
         const duration = (
-          await Util.time(() => hook.call(this.#hooks, context))
+          await Util.time(() => hook.call(this.#hooksObject, context))
         ).cost
 
         debug("Hook function completed successfully: %o, after %oms", 4, hookName, duration)
@@ -208,16 +214,26 @@ export default class ActionHooks {
           expireAsync
         ])
       } catch(error) {
-        throw Sass.new(`Processing hook ${kind}$${activityName}`, error)
+        throw Sass.new(`Processing hook ${hookName}`, error)
       }
 
       debug("We made it throoough the wildernessss", 4)
 
     } catch(error) {
-      throw Sass.new(`Processing hook ${kind}$${activityName}`, error)
+      throw Sass.new(`Processing hook ${hookName}`, error)
     }
   }
 
+  /**
+   * Transforms an activity name into a hook-compatible name.
+   * Converts "my activity name" to "myActivityName" and combines with event kind.
+   * Example: ("before", "my activity") => "before$myActivity"
+   *
+   * @param {string} event Hook event type (before, after, etc.)
+   * @param {string} activityName The raw activity name
+   * @returns {string} The formatted hook name
+   * @private
+   */
   #getActivityHookName(event, activityName) {
     const name = activityName
       .split(" ")

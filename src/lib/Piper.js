@@ -2,18 +2,20 @@
  * Generic Pipeline - Process items through a series of steps with concurrency control
  *
  * This abstraction handles:
- * - Concurrent processing with configurable limits
- * - Pipeline of processing steps
- * - Result categorization (success/warning/error)
+ * - Concurrent processing with configurable limits using worker pool pattern
+ * - Pipeline of processing steps executed sequentially per item
  * - Setup/cleanup lifecycle hooks
  * - Error handling and reporting
+ * - Dynamic worker spawning to maintain concurrency
  */
 
 import {Sass, Tantrum, Util} from "@gesslar/toolkit"
 
 export default class Piper {
+  /** @type {(message: string, level?: number, ...args: Array<unknown>) => void} */
   #debug
 
+  /** @type {Map<string, Set<unknown>>} */
   #lifeCycle = new Map([
     ["setup", new Set()],
     ["process", new Set()],
@@ -30,14 +32,19 @@ export default class Piper {
   }
 
   /**
-   * Add a processing step to the pipeline
+   * Add a processing step to the pipeline.
+   * Each step is executed sequentially per item.
    *
    * @param {(context: unknown) => Promise<unknown>|unknown} fn Function that processes an item
-   * @param {{name?: string, required?: boolean}} [options] Step options
+   * @param {{name: string, required?: boolean}} options Step options (name is required)
    * @param {unknown} [newThis] Optional this binding
    * @returns {Piper} The pipeline instance (for chaining)
+   * @throws {Sass} If name is not provided in options
    */
   addStep(fn, options = {}, newThis) {
+    if(options.name == null)
+      throw Sass.new("Missing name for step.")
+
     this.#lifeCycle.get("process").add({
       fn: fn.bind(newThis ?? this),
       name: options.name || `Step ${this.#lifeCycle.get("process").size + 1}`,
@@ -75,33 +82,58 @@ export default class Piper {
   }
 
   /**
-   * Process items through the pipeline with concurrency control
+   * Process items through the pipeline with concurrency control using a worker pool pattern.
+   * Workers are spawned up to maxConcurrent limit, and as workers complete, new workers
+   * are spawned to maintain concurrency until all items are processed.
    *
    * @param {Array<unknown>|unknown} items - Items to process
-   * @param {number} maxConcurrent - Maximum concurrent items to process
-   * @returns {Promise<Array<unknown>>} - Collected results from steps
+   * @param {number} [maxConcurrent] - Maximum concurrent items to process
+   * @returns {Promise<Array<unknown>>} - Collected results from all processed items
+   * @throws {Sass} If setup, processing, or teardown fails
    */
   async pipe(items, maxConcurrent = 10) {
     items = Array.isArray(items)
       ? items
       : [items]
 
-    let itemIndex = 0
     const allResults = []
+    let pendingCount = 0
+    let resolveAll
+    const allDone = new Promise(resolve => {
+      resolveAll = resolve
+    })
 
+    /**
+     * Worker function that processes one item and potentially spawns a replacement.
+     *
+     * @private
+     */
     const processWorker = async() => {
-      while(true) {
-        const currentIndex = itemIndex++
-        if(currentIndex >= items.length)
-          break
+      const item = items.shift()
+      if(!item) {
+        pendingCount--
 
-        const item = items[currentIndex]
-        try {
-          const result = await this.#processItem(item)
-          allResults.push(result)
-        } catch(error) {
-          throw Sass.new("Processing pipeline item.", error)
+        if(pendingCount === 0)
+          resolveAll()
+
+        return
+      }
+
+      try {
+        const result = await this.#processWorker(item)
+        allResults.push(result)
+
+        // Spawn a replacement worker if there are more items
+        if(items.length > 0) {
+          pendingCount++
+          processWorker() // Don't await - let it run in parallel
         }
+      } catch(error) {
+        throw Sass.new("Processing pipeline item.", error)
+      } finally {
+        pendingCount--
+        if(pendingCount === 0)
+          resolveAll()
       }
     }
 
@@ -110,26 +142,52 @@ export default class Piper {
     )
     this.#processResult("Setting up the pipeline.", setupResult)
 
-    try {
-      // Start workers up to maxConcurrent limit
-      const workers = []
-      const workerCount = Math.min(maxConcurrent, items.length)
+    // Start workers up to maxConcurrent limit
+    const workerCount = Math.min(maxConcurrent, items.length)
+    pendingCount = workerCount
 
-      for(let i = 0; i < workerCount; i++)
-        workers.push(processWorker())
-
-      // Wait for all workers to complete
-      const processResult = await Util.settleAll(workers)
-      this.#processResult("Processing pipeline.", processResult)
-    } finally {
-      // Run cleanup hooks
-      const teardownResult = await Util.settleAll(
-        [...this.#lifeCycle.get("teardown")].map(e => e())
-      )
-      this.#processResult("Tearing down the pipeline.", teardownResult)
+    if(workerCount === 0) {
+      resolveAll() // No items to process
+    } else {
+      for(let i = 0; i < workerCount; i++) {
+        processWorker() // Don't await - let them all run in parallel
+      }
     }
 
+    // Wait for all workers to complete
+    await allDone
+
+    // Run cleanup hooks
+    const teardownResult = await Util.settleAll(
+      [...this.#lifeCycle.get("teardown")].map(e => e())
+    )
+    this.#processResult("Tearing down the pipeline.", teardownResult)
+
     return allResults
+  }
+
+  /**
+   * Process a single item through all pipeline steps.
+   *
+   * @param {unknown} item The item to process
+   * @returns {Promise<unknown>} Result from the final step
+   * @private
+   */
+  async #processWorker(item) {
+    try {
+      // Execute each step in sequence
+      let result = item
+
+      for(const step of this.#lifeCycle.get("process")) {
+        this.#debug("Executing step: %o", 4, step.name)
+
+        result = await step.fn(result) ?? result
+      }
+
+      return result
+    } catch(error) {
+      throw Sass.new("Processing an item.", error)
+    }
   }
 
   /**
@@ -145,30 +203,5 @@ export default class Piper {
         message,
         settled.filter(r => r.status==="rejected").map(r => r.reason)
       )
-  }
-
-  /**
-   * Process a single item through all pipeline steps
-   *
-   * @param {unknown} item The item to process
-   * @returns {Promise<unknown>} Result from the final step
-   * @private
-   */
-  async #processItem(item) {
-    // Execute each step in sequence
-    let result = item
-
-    for(const step of this.#lifeCycle.get("process")) {
-      this.#debug("Executing step: %o", 4, step.name)
-
-      try {
-        result = await step.fn(result) ?? result
-      } catch(error) {
-        if(step.required)
-          throw Sass.new(`Processing required step "${step.name}".`, error)
-      }
-    }
-
-    return result
   }
 }

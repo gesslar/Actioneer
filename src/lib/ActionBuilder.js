@@ -30,6 +30,8 @@ import ActionHooks from "./ActionHooks.js"
  * @property {ActionFunction|import("./ActionWrapper.js").default} op Operation to execute.
  * @property {number} [kind] Optional kind flags from {@link ActivityFlags}.
  * @property {(context: unknown) => boolean|Promise<boolean>} [pred] Loop predicate.
+ * @property {(context: unknown) => unknown} [splitter] Function to split context for parallel execution (SPLIT activities).
+ * @property {(originalContext: unknown, splitResults: unknown) => unknown} [rejoiner] Function to rejoin split results (SPLIT activities).
  */
 
 /**
@@ -65,15 +67,29 @@ export default class ActionBuilder {
   #debug = null
   /** @type {symbol|null} */
   #tag = null
+  /** @type {string|null} */
   #hooksFile = null
+  /** @type {string|null} */
   #hooksKind = null
+  /** @type {unknown|null} */
   #hooks = null
+  /** @type {import("./ActionHooks.js").default|null} */
+  #actionHooks = null
+
+  /**
+   * Get the builder's tag symbol.
+   *
+   * @returns {symbol|null} The tag symbol for this builder instance
+   */
+  get tag() {
+    return this.#tag
+  }
 
   /**
    * Creates a new ActionBuilder instance with the provided action callback.
    *
-   * @param {ActionBuilderAction} [action] Base action invoked by the runner when a block satisfies the configured structure.
-   * @param {ActionBuilderConfig} [config] Options
+   * @param {ActionBuilderAction} [action] - Base action invoked by the runner when a block satisfies the configured structure.
+   * @param {ActionBuilderConfig} [config] - Options
    */
   constructor(
     action,
@@ -113,6 +129,16 @@ export default class ActionBuilder {
    */
 
   /**
+   * @overload
+   * @param {string|symbol} name Activity name
+   * @param {number} kind Kind bitfield (ACTIVITY.SPLIT).
+   * @param {(context: unknown) => unknown} splitter Function to split context for parallel execution.
+   * @param {(originalContext: unknown, splitResults: unknown) => unknown} rejoiner Function to rejoin split results with original context.
+   * @param {ActionFunction|ActionBuilder} op Operation or nested ActionBuilder to execute on split context.
+   * @returns {ActionBuilder}
+   */
+
+  /**
    * Handles runtime dispatch across the documented overloads.
    *
    * @param {string|symbol} name Activity name
@@ -129,22 +155,32 @@ export default class ActionBuilder {
 
     const action = this.#action
     const debug = this.#debug
-    const activityDefinition = {name, action, debug}
+    const activityDefinition = {name,action,debug}
 
     if(args.length === 1) {
-      const [op, kind] = args
+      const [op,kind] = args
       Valid.type(kind, "Number|undefined")
       Valid.type(op, "Function")
 
-      Object.assign(activityDefinition, {op, kind})
+      Object.assign(activityDefinition, {op,kind})
     } else if(args.length === 3) {
-      const [kind, pred, op] = args
+      const [kind,pred,op] = args
 
       Valid.type(kind, "Number")
       Valid.type(pred, "Function")
       Valid.type(op, "Function|ActionBuilder")
 
-      Object.assign(activityDefinition, {kind, pred, op})
+      Object.assign(activityDefinition, {kind,pred,op})
+    } else if(args.length === 4) {
+      const [kind,splitter,rejoiner,op] = args
+
+      Valid.type(kind, "Number")
+      Valid.type(splitter, "Function")
+      Valid.type(rejoiner, "Function")
+      Valid.type(op, "Function|ActionBuilder")
+
+      Object.assign(activityDefinition, {kind,splitter,rejoiner,op})
+
     } else {
       throw Sass.new("Invalid number of arguments passed to 'do'")
     }
@@ -163,9 +199,7 @@ export default class ActionBuilder {
    * @throws {Sass} If hooks have already been configured.
    */
   withHooksFile(hooksFile, hooksKind) {
-    Valid.assert(this.#hooksFile === null, "Hooks have already been configured.")
-    Valid.assert(this.#hooksKind === null, "Hooks have already been configured.")
-    Valid.assert(this.#hooks === null, "Hooks have already been configured.")
+    Valid.assert(this.#exclusiveHooksCheck(), "Hooks have already been configured.")
 
     this.#hooksFile = hooksFile
     this.#hooksKind = hooksKind
@@ -181,13 +215,38 @@ export default class ActionBuilder {
    * @throws {Sass} If hooks have already been configured.
    */
   withHooks(hooks) {
-    Valid.assert(this.#hooksFile === null, "Hooks have already been configured.")
-    Valid.assert(this.#hooksKind === null, "Hooks have already been configured.")
-    Valid.assert(this.#hooks === null, "Hooks have already been configured.")
+    Valid.assert(this.#exclusiveHooksCheck(), "Hooks have already been configured.")
 
     this.#hooks = hooks
 
     return this
+  }
+
+  /**
+   * Configure hooks using an ActionHooks instance directly (typically used internally).
+   *
+   * @param {import("./ActionHooks.js").default} actionHooks Pre-configured ActionHooks instance.
+   * @returns {ActionBuilder} The builder instance for chaining.
+   * @throws {Sass} If hooks have already been configured.
+   */
+  withActionHooks(actionHooks) {
+    Valid.assert(this.#exclusiveHooksCheck(), "Hooks have already been configured.")
+
+    this.#actionHooks = actionHooks
+
+    return this
+  }
+
+  /**
+   * Ensures only one hooks configuration method is used at a time.
+   *
+   * @returns {boolean} True if no hooks have been configured yet, false otherwise.
+   * @private
+   */
+  #exclusiveHooksCheck() {
+    return !!(this.#hooksFile && this.#hooksKind) +
+           !!(this.#hooks) +
+           !!(this.#actionHooks) === 0
   }
 
   /**
@@ -211,6 +270,8 @@ export default class ActionBuilder {
    */
   async build() {
     const action = this.#action
+    const activities = this.#activities
+    const debug = this.#debug
 
     if(!action.tag) {
       action.tag = this.#tag
@@ -221,24 +282,47 @@ export default class ActionBuilder {
     // All children in a branch also get the same hooks.
     const hooks = await this.#getHooks()
 
-    return new ActionWrapper({
-      activities: this.#activities,
-      debug: this.#debug,
-      hooks,
-    })
+    return new ActionWrapper({activities,hooks,debug})
   }
 
+  /**
+   * Check if this builder has ActionHooks configured.
+   *
+   * @returns {boolean} True if ActionHooks have been configured.
+   */
+  get hasActionHooks() {
+    return this.#actionHooks !== null
+  }
+
+  /**
+   * Internal method to retrieve or create ActionHooks instance.
+   * Caches the hooks instance to avoid redundant instantiation.
+   *
+   * @returns {Promise<import("./ActionHooks.js").default|undefined>} The ActionHooks instance if configured.
+   * @private
+   */
   async #getHooks() {
+    if(this.#actionHooks) {
+      return this.#actionHooks
+    }
+
     const newHooks = ActionHooks.new
 
     const hooks = this.#hooks
-    if(hooks)
-      return await newHooks({hooks}, this.#debug)
+
+    if(hooks) {
+      this.#actionHooks = await newHooks({hooks}, this.#debug)
+
+      return this.#actionHooks
+    }
 
     const hooksFile = this.#hooksFile
     const hooksKind = this.#hooksKind
 
-    if(hooksFile && hooksKind)
-      return await newHooks({hooksFile,hooksKind}, this.#debug)
+    if(hooksFile && hooksKind) {
+      this.#actionHooks = await newHooks({hooksFile,hooksKind}, this.#debug)
+
+      return this.#actionHooks
+    }
   }
 }

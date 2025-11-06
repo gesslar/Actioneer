@@ -3,9 +3,11 @@ import Activity from "./Activity.js"
 /**
  * @typedef {object} WrappedActivityConfig
  * @property {string|symbol} name Activity identifier used by hooks/logs.
- * @property {(context: unknown) => unknown|Promise<unknown>|ActionWrapper} op Operation or nested wrapper to execute.
+ * @property {(context: unknown) => unknown|Promise<unknown>|import("./ActionBuilder.js").default} op Operation or nested ActionBuilder to execute.
  * @property {number} [kind] Optional loop semantic flags.
  * @property {(context: unknown) => boolean|Promise<boolean>} [pred] Predicate tied to WHILE/UNTIL semantics.
+ * @property {(context: unknown) => unknown} [splitter] Splitter function for SPLIT activities.
+ * @property {(originalContext: unknown, splitResults: unknown) => unknown} [rejoiner] Rejoiner function for SPLIT activities.
  * @property {unknown} [action] Parent action instance supplied when invoking the op.
  * @property {(message: string, level?: number, ...args: Array<unknown>) => void} [debug] Optional logger reference.
  */
@@ -31,21 +33,29 @@ export default class ActionWrapper {
    */
   #debug = () => {}
 
+  /**
+   * ActionHooks instance shared across all activities.
+   *
+   * @type {import("./ActionHooks.js").default|null}
+   */
   #hooks = null
 
   /**
    * Create a wrapper from the builder payload.
    *
-   * @param {{activities: Map<string|symbol, WrappedActivityConfig>, debug: (message: string, level?: number, ...args: Array<unknown>) => void}} init Builder payload containing activities + logger.
+   * @param {object} config Builder payload containing activities + logger
+   * @param {Map<string|symbol, WrappedActivityConfig>} config.activities Activities map
+   * @param {(message: string, level?: number, ...args: Array<unknown>) => void} config.debug Debug function
+   * @param {object} config.hooks Hooks object
    */
-  constructor({activities,hooks,debug}) {
-    this.#debug = debug
-    this.#hooks = hooks
-    this.#activities = activities
+  constructor(config) {
+    this.#debug = config.debug
+    this.#hooks = config.hooks
+    this.#activities = config.activities
     this.#debug(
       "Instantiating ActionWrapper with %o activities.",
       2,
-      activities.size,
+      this.#activities.size,
     )
   }
 

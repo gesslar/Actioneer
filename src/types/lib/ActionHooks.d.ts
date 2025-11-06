@@ -3,11 +3,10 @@
  */
 /**
  * @typedef {object} ActionHooksConfig
- * @property {string} actionKind Action identifier shared between runner and hooks.
- * @property {FileObject} hooksFile File handle used to import the hooks module.
- * @property {unknown} [hooks] Already-instantiated hooks implementation (skips loading).
+ * @property {string} [actionKind] Action identifier shared between runner and hooks.
+ * @property {FileObject|string} [hooksFile] File handle or path used to import the hooks module.
+ * @property {unknown} [hooksObject] Already-instantiated hooks implementation (skips loading).
  * @property {number} [hookTimeout] Timeout applied to hook execution in milliseconds.
- * @property {DebugFn} debug Logger to emit diagnostics.
  */
 /**
  * @typedef {Record<string, (context: unknown) => Promise<unknown>|unknown>} HookModule
@@ -21,37 +20,38 @@ export default class ActionHooks {
   /**
    * Static factory method to create and initialize a hook manager.
    * Loads hooks from the specified file and returns an initialized instance.
-   * Override loadHooks() in subclasses to customize hook loading logic.
+   * If a hooksObject is provided in config, it's used directly; otherwise, hooks are loaded from file.
    *
-   * @param {ActionHooksConfig} config Same configuration object as constructor
+   * @param {ActionHooksConfig} config Configuration object with hooks settings
    * @param {DebugFn} debug The debug function.
-   * @returns {Promise<ActionHooks|null>} Initialized hook manager or null if no hooks found
+   * @returns {Promise<ActionHooks>} Initialized hook manager
    */
-  static 'new'(config: ActionHooksConfig, debug: DebugFn): Promise<ActionHooks | null>
+  static 'new'(config: ActionHooksConfig, debug: DebugFn): Promise<ActionHooks>
   /**
    * Creates a new ActionHook instance.
    *
    * @param {ActionHooksConfig} config Configuration values describing how to load the hooks.
+   * @param {(message: string, level?: number, ...args: Array<unknown>) => void} debug Debug function
    */
-  constructor({ actionKind, hooksFile, hooks, hookTimeout, debug }: ActionHooksConfig)
+  constructor({ actionKind, hooksFile, hooksObject, hookTimeout }: ActionHooksConfig, debug: (message: string, level?: number, ...args: Array<unknown>) => void)
   /**
    * Gets the action identifier.
    *
-   * @returns {string} Action identifier or instance
+   * @returns {string|null} Action identifier or instance
    */
-  get actionKind(): string
+  get actionKind(): string | null
   /**
    * Gets the hooks file object.
    *
-   * @returns {FileObject} File object containing hooks
+   * @returns {FileObject|null} File object containing hooks
    */
-  get hooksFile(): FileObject
+  get hooksFile(): FileObject | null
   /**
    * Gets the loaded hooks object.
    *
-   * @returns {object|null} Hooks object or null if not loaded
+   * @returns {HookModule|null} Hooks object or null if not loaded
    */
-  get hooks(): object | null
+  get hooks(): HookModule | null
   /**
    * Gets the hook execution timeout in milliseconds.
    *
@@ -71,12 +71,15 @@ export default class ActionHooks {
    */
   get cleanup(): (args: object) => unknown | null
   /**
-   * Invoke a dynamically-named hook such as `before$foo`.
+   * Invoke a dynamically-named hook such as `before$foo` or `after$foo`.
+   * The hook name is constructed by combining the kind with the activity name.
+   * Symbols are converted to their description. Non-alphanumeric characters are filtered out.
    *
    * @param {'before'|'after'|'setup'|'cleanup'|string} kind Hook namespace.
    * @param {string|symbol} activityName Activity identifier.
    * @param {unknown} context Pipeline context supplied to the hook.
    * @returns {Promise<void>}
+   * @throws {Sass} If the hook execution fails or exceeds timeout.
    */
   callHook(kind: 'before' | 'after' | 'setup' | 'cleanup' | string, activityName: string | symbol, context: unknown): Promise<void>
   #private
@@ -86,23 +89,19 @@ export type ActionHooksConfig = {
   /**
    * Action identifier shared between runner and hooks.
    */
-  actionKind: string;
+  actionKind?: string | undefined;
   /**
-   * File handle used to import the hooks module.
+   * File handle or path used to import the hooks module.
    */
-  hooksFile: FileObject;
+  hooksFile?: string | FileObject | undefined;
   /**
    * Already-instantiated hooks implementation (skips loading).
    */
-  hooks?: unknown;
+  hooksObject?: unknown;
   /**
    * Timeout applied to hook execution in milliseconds.
    */
   hookTimeout?: number | undefined;
-  /**
-   * Logger to emit diagnostics.
-   */
-  debug: DebugFn;
 }
 export type HookModule = Record<string, (context: unknown) => Promise<unknown> | unknown>
 import { FileObject } from '@gesslar/toolkit'
