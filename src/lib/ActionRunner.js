@@ -82,10 +82,14 @@ export default class ActionRunner extends Piper {
       if(!kind) {
         context = await this.#executeActivity(activity, context)
       } else {
-        if((kind & (kind - 1)) !== 0 && kind === 0)
+        // Check if multiple activity kind bits are set (invalid)
+        // Using bit trick: (kind & (kind - 1)) !== 0 means multiple bits set
+        // But we also need to ensure kind !== 0 (at least one bit set)
+        const multipleBitsSet = (kind & (kind - 1)) !== 0
+        if(multipleBitsSet)
           throw Sass.new(
-            "For Kathy Griffin's sake! You can't do something while AND " +
-            "until. Pick one! Also, forget about splitting. Not. Happening."
+            "For Kathy Griffin's sake! You can't combine activity kinds. " +
+            "Pick one: WHILE, UNTIL, or SPLIT!"
           )
 
         const {WHILE,UNTIL,SPLIT} = ACTIVITY
@@ -128,6 +132,12 @@ export default class ActionRunner extends Piper {
           // Split activity: execute with split/rejoin pattern for parallel processing
           const splitter = activity.splitter
           const rejoiner = activity.rejoiner
+
+          // Validate that both splitter and rejoiner are provided
+          if(!splitter || !rejoiner)
+            throw Sass.new(
+              `SPLIT activity "${String(activity.name)}" requires both splitter and rejoiner functions.`
+            )
 
           const originalContext = context
           const splitContext = splitter.call(activity.action,context)

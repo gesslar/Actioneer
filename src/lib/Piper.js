@@ -97,10 +97,13 @@ export default class Piper {
       : [items]
 
     const allResults = []
+    const allErrors = []
     let pendingCount = 0
     let resolveAll
-    const allDone = new Promise(resolve => {
+    let rejectAll
+    const allDone = new Promise((resolve, reject) => {
       resolveAll = resolve
+      rejectAll = reject
     })
 
     /**
@@ -109,15 +112,21 @@ export default class Piper {
      * @private
      */
     const processWorker = async() => {
-      const item = items.shift()
-      if(!item) {
+      // Check if there are any items left to process
+      if(items.length === 0) {
         pendingCount--
 
-        if(pendingCount === 0)
-          resolveAll()
+        if(pendingCount === 0) {
+          if(allErrors.length > 0)
+            rejectAll(allErrors)
+          else
+            resolveAll()
+        }
 
         return
       }
+
+      const item = items.shift()
 
       try {
         const result = await this.#processWorker(item)
@@ -129,11 +138,15 @@ export default class Piper {
           processWorker() // Don't await - let it run in parallel
         }
       } catch(error) {
-        throw Sass.new("Processing pipeline item.", error)
+        allErrors.push(Sass.new("Processing pipeline item.", error))
       } finally {
         pendingCount--
-        if(pendingCount === 0)
-          resolveAll()
+        if(pendingCount === 0) {
+          if(allErrors.length > 0)
+            rejectAll(allErrors)
+          else
+            resolveAll()
+        }
       }
     }
 

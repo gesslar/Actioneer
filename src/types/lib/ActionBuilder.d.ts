@@ -92,13 +92,8 @@ export default class ActionBuilder {
    * @param {ActionFunction|ActionBuilder} op Operation or nested ActionBuilder to execute on split context.
    * @returns {ActionBuilder}
    */
-  do(
-    name: string | symbol,
-    kind: number,
-    splitter: (context: unknown) => unknown,
-    rejoiner: (originalContext: unknown, splitResults: unknown) => unknown,
-    op: ActionFunction | ActionBuilder
-  ): ActionBuilder
+  // eslint-disable-next-line @stylistic/max-len
+  do(name: string | symbol, kind: number, splitter: (context: unknown) => unknown, rejoiner: (originalContext: unknown, splitResults: unknown) => unknown, op: ActionFunction | ActionBuilder): ActionBuilder
   /**
    * Configure hooks to be loaded from a file when the action is built.
    *
