@@ -142,26 +142,28 @@ export default class Piper {
     )
     this.#processResult("Setting up the pipeline.", setupResult)
 
-    // Start workers up to maxConcurrent limit
-    const workerCount = Math.min(maxConcurrent, items.length)
-    pendingCount = workerCount
+    try {
+      // Start workers up to maxConcurrent limit
+      const workerCount = Math.min(maxConcurrent, items.length)
+      pendingCount = workerCount
 
-    if(workerCount === 0) {
-      resolveAll() // No items to process
-    } else {
-      for(let i = 0; i < workerCount; i++) {
-        processWorker() // Don't await - let them all run in parallel
+      if(workerCount === 0) {
+        resolveAll() // No items to process
+      } else {
+        for(let i = 0; i < workerCount; i++) {
+          processWorker() // Don't await - let them all run in parallel
+        }
       }
+
+      // Wait for all workers to complete
+      await allDone
+    } finally {
+      // Run cleanup hooks
+      const teardownResult = await Util.settleAll(
+        [...this.#lifeCycle.get("teardown")].map(e => e())
+      )
+      this.#processResult("Tearing down the pipeline.", teardownResult)
     }
-
-    // Wait for all workers to complete
-    await allDone
-
-    // Run cleanup hooks
-    const teardownResult = await Util.settleAll(
-      [...this.#lifeCycle.get("teardown")].map(e => e())
-    )
-    this.#processResult("Tearing down the pipeline.", teardownResult)
 
     return allResults
   }
