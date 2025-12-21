@@ -114,7 +114,7 @@ export default class ActionHooks {
   static async new(config, debug) {
     debug("Creating new HookManager instance with args: %o", 2, config)
 
-    const instance = new ActionHooks({...config, debug}, debug)
+    const instance = new ActionHooks({...config, debug})
     if(!instance.#hooks) {
       const hooksFile = new FileObject(instance.#hooksFile)
 

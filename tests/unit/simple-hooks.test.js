@@ -9,10 +9,6 @@ describe('Simple hooks test', () => {
   it('calls hooks for a simple activity', async () => {
     const executionLog = []
     
-    const debug = (msg, level, ...args) => {
-      console.log(`[DEBUG ${level}]`, msg, ...args)
-    }
-    
     class TestHooks {
       constructor({debug}) {
         this.debug = debug
@@ -30,7 +26,7 @@ describe('Simple hooks test', () => {
     class SimpleAction {
       setup(builder) {
         builder
-          .withHooks(new TestHooks({debug}))
+          .withHooks(new TestHooks({debug: () => {}}))
           .do('test', ctx => {
             executionLog.push('test')
             return ctx
@@ -38,8 +34,8 @@ describe('Simple hooks test', () => {
       }
     }
     
-    const builder = new ActionBuilder(new SimpleAction(), {debug})
-    const runner = new ActionRunner(builder, {debug})
+    const builder = new ActionBuilder(new SimpleAction())
+    const runner = new ActionRunner(builder)
     await runner.run({})
     
     // Verify hooks were called
