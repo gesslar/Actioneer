@@ -44,6 +44,158 @@ import { ActionBuilder, ActionRunner } from "@gesslar/actioneer"
 
 If you'd like more complete typings or additional JSDoc, open an issue or send a PR — contributions welcome.
 
+## Activity Modes
+
+Actioneer supports four distinct execution modes for activities, allowing you to control how operations are executed:
+
+### Execute Once (Default)
+
+The simplest mode executes an activity exactly once per context:
+
+```js
+class MyAction {
+  setup(builder) {
+    builder.do("processItem", ctx => {
+      ctx.result = ctx.input * 2
+    })
+  }
+}
+```
+
+### WHILE Mode
+
+Loops while a predicate returns `true`. The predicate is evaluated **before** each iteration:
+
+```js
+import { ActionBuilder, ACTIVITY } from "@gesslar/actioneer"
+
+class CounterAction {
+  #shouldContinue = (ctx) => ctx.count < 10
+
+  #increment = (ctx) => {
+    ctx.count += 1
+  }
+
+  setup(builder) {
+    builder
+      .do("initialize", ctx => { ctx.count = 0 })
+      .do("countUp", ACTIVITY.WHILE, this.#shouldContinue, this.#increment)
+      .do("finish", ctx => { return ctx.count })
+  }
+}
+```
+
+The activity will continue executing as long as the predicate returns `true`. Once it returns `false`, execution moves to the next activity.
+
+### UNTIL Mode
+
+Loops until a predicate returns `true`. The predicate is evaluated **after** each iteration:
+
+```js
+import { ActionBuilder, ACTIVITY } from "@gesslar/actioneer"
+
+class ProcessorAction {
+  #queueIsEmpty = (ctx) => ctx.queue.length === 0
+
+  #processItem = (ctx) => {
+    const item = ctx.queue.shift()
+    ctx.processed.push(item)
+  }
+
+  setup(builder) {
+    builder
+      .do("initialize", ctx => {
+        ctx.queue = [1, 2, 3, 4, 5]
+        ctx.processed = []
+      })
+      .do("process", ACTIVITY.UNTIL, this.#queueIsEmpty, this.#processItem)
+      .do("finish", ctx => { return ctx.processed })
+  }
+}
+```
+
+The activity executes at least once, then continues while the predicate returns `false`. Once it returns `true`, execution moves to the next activity.
+
+### SPLIT Mode
+
+Executes with a split/rejoin pattern for parallel execution. This mode requires a splitter function to divide the context and a rejoiner function to recombine results:
+
+```js
+import { ActionBuilder, ACTIVITY } from "@gesslar/actioneer"
+
+class ParallelProcessor {
+  #split = (ctx) => {
+    // Split context into multiple items for parallel processing
+    return ctx.items.map(item => ({ item, processedBy: "worker" }))
+  }
+
+  #rejoin = (originalCtx, splitResults) => {
+    // Recombine parallel results back into original context
+    originalCtx.results = splitResults.map(r => r.item)
+    return originalCtx
+  }
+
+  #processItem = (ctx) => {
+    ctx.item = ctx.item.toUpperCase()
+  }
+
+  setup(builder) {
+    builder
+      .do("initialize", ctx => {
+        ctx.items = ["apple", "banana", "cherry"]
+      })
+      .do("parallel", ACTIVITY.SPLIT, this.#split, this.#rejoin, this.#processItem)
+      .do("finish", ctx => { return ctx.results })
+  }
+}
+```
+
+**How SPLIT Mode Works:**
+
+1. The **splitter** function receives the context and returns an array of contexts (one per parallel task)
+2. Each split context is processed in parallel through the **operation** function
+3. The **rejoiner** function receives the original context and the array of processed results
+4. The rejoiner combines the results and returns the updated context
+
+**Nested Pipelines with SPLIT:**
+
+You can use nested ActionBuilders with SPLIT mode for complex parallel workflows:
+
+```js
+class NestedParallel {
+  #split = (ctx) => ctx.batches.map(batch => ({ batch }))
+
+  #rejoin = (original, results) => {
+    original.processed = results.flatMap(r => r.batch)
+    return original
+  }
+
+  setup(builder) {
+    builder
+      .do("parallel", ACTIVITY.SPLIT, this.#split, this.#rejoin,
+        new ActionBuilder(this)
+          .do("step1", ctx => { /* ... */ })
+          .do("step2", ctx => { /* ... */ })
+      )
+  }
+}
+```
+
+### Mode Constraints
+
+- **Only one mode per activity**: You cannot combine WHILE, UNTIL, and SPLIT. Attempting to use multiple modes will throw an error: `"You can't combine activity kinds. Pick one: WHILE, UNTIL, or SPLIT!"`
+- **SPLIT requires both functions**: The splitter and rejoiner are both mandatory for SPLIT mode
+- **Predicates must return boolean**: For WHILE and UNTIL modes, predicates should return `true` or `false`
+
+### Mode Summary Table
+
+| Mode        | Signature                                                  | Predicate Timing | Use Case                             |
+| ----------- | ---------------------------------------------------------- | ---------------- | ------------------------------------ |
+| **Default** | `.do(name, operation)`                                     | N/A              | Execute once per context             |
+| **WHILE**   | `.do(name, ACTIVITY.WHILE, predicate, operation)`          | Before iteration | Loop while condition is true         |
+| **UNTIL**   | `.do(name, ACTIVITY.UNTIL, predicate, operation)`          | After iteration  | Loop until condition is true         |
+| **SPLIT**   | `.do(name, ACTIVITY.SPLIT, splitter, rejoiner, operation)` | N/A              | Parallel execution with split/rejoin |
+
 ## ActionHooks
 
 Actioneer supports lifecycle hooks that can execute before and after each activity in your pipeline. Hooks are loaded from a module and can be configured either by file path or by providing a pre-instantiated hooks object.
