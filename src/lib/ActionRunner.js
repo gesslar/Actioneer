@@ -147,7 +147,7 @@ export default class ActionRunner extends Piper {
    *
    * When parallel=true, uses Piper.pipe() for concurrent execution with worker pool pattern.
    * This is triggered by SPLIT activities where context is divided for parallel processing.
-   * Results from parallel execution are filtered to only include successful outcomes ({ok: true}).
+   * Results from parallel execution are returned directly as an array from Piper.pipe().
    *
    * @param {import("./Activity.js").default} activity Pipeline activity descriptor.
    * @param {unknown} context Current pipeline context.
@@ -170,9 +170,7 @@ export default class ActionRunner extends Piper {
       })
 
       if(parallel) {
-        const piped = await runner.pipe(context)
-
-        return piped.filter(p => p.ok).map(p => p.value)
+        return await runner.pipe(context)
       } else {
         return await runner.run(context)
       }
@@ -189,9 +187,7 @@ export default class ActionRunner extends Piper {
           })
 
           if(parallel) {
-            const piped = await runner.pipe(context)
-
-            return piped.filter(p => p.ok).map(p => p.value)
+            return await runner.pipe(context)
           } else {
             return await runner.run(context)
           }
