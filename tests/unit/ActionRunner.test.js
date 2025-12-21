@@ -1,0 +1,516 @@
+#!/usr/bin/env node
+
+import {describe, it} from "node:test"
+import assert from "node:assert/strict"
+
+import {ActionRunner, ActionBuilder, ACTIVITY} from "../../src/index.js"
+
+describe("ActionRunner", () => {
+  describe("constructor", () => {
+    it("creates runner with ActionBuilder", () => {
+      const action = {
+        setup: (builder) => {
+          builder.do("test", () => {})
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder)
+
+      assert.ok(runner)
+    })
+
+    it("creates runner without ActionBuilder", () => {
+      const runner = new ActionRunner(null)
+      assert.ok(runner)
+    })
+
+    it("accepts debug function", () => {
+      const debugCalls = []
+      const debug = (msg) => debugCalls.push(msg)
+
+      const action = {setup: () => {}}
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder, {debug})
+
+      assert.ok(runner)
+    })
+
+    it("throws error when passed non-ActionBuilder", () => {
+      assert.throws(
+        () => new ActionRunner({}),
+        /ActionRunner takes an instance of an ActionBuilder/
+      )
+    })
+
+    it("throws error when passed string", () => {
+      assert.throws(
+        () => new ActionRunner("not-a-builder"),
+        /ActionRunner takes an instance of an ActionBuilder/
+      )
+    })
+  })
+
+  describe("run()", () => {
+    it("executes simple activity", async () => {
+      let executed = false
+
+      const action = {
+        setup: (builder) => {
+          builder.do("test", () => {
+            executed = true
+          })
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder)
+
+      await runner.run({})
+      assert.ok(executed)
+    })
+
+    it("passes context through activities", async () => {
+      const action = {
+        setup: (builder) => {
+          builder
+            .do("step1", (ctx) => {
+              ctx.value = 10
+              return ctx
+            })
+            .do("step2", (ctx) => {
+              ctx.value = ctx.value * 2
+              return ctx
+            })
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder)
+
+      const result = await runner.run({})
+      assert.equal(result.value, 20)
+    })
+
+    it("executes activities in order", async () => {
+      const order = []
+
+      const action = {
+        setup: (builder) => {
+          builder
+            .do("first", () => order.push(1))
+            .do("second", () => order.push(2))
+            .do("third", () => order.push(3))
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder)
+
+      await runner.run({})
+      assert.deepEqual(order, [1, 2, 3])
+    })
+
+    it("returns final context value", async () => {
+      const action = {
+        setup: (builder) => {
+          builder.do("test", () => ({result: "success"}))
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder)
+
+      const result = await runner.run({})
+      assert.deepEqual(result, {result: "success"})
+    })
+
+    it("handles async activities", async () => {
+      const action = {
+        setup: (builder) => {
+          builder.do("test", async (ctx) => {
+            await new Promise(resolve => setTimeout(resolve, 10))
+            ctx.done = true
+            return ctx
+          })
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder)
+
+      const result = await runner.run({})
+      assert.ok(result.done)
+    })
+  })
+
+  describe("WHILE activities", () => {
+    it("loops while predicate is true", async () => {
+      const action = {
+        setup: (builder) => {
+          builder
+            .do("init", (ctx) => {
+              ctx.count = 0
+              return ctx
+            })
+            .do("loop", ACTIVITY.WHILE, (ctx) => ctx.count < 3, (ctx) => {
+              ctx.count++
+              return ctx
+            })
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder)
+
+      const result = await runner.run({})
+      assert.equal(result.count, 3)
+    })
+
+    it("does not execute when predicate is initially false", async () => {
+      let executed = false
+
+      const action = {
+        setup: (builder) => {
+          builder.do("loop", ACTIVITY.WHILE, () => false, () => {
+            executed = true
+          })
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder)
+
+      await runner.run({})
+      assert.equal(executed, false)
+    })
+
+    it("handles async predicates", async () => {
+      const action = {
+        setup: (builder) => {
+          builder
+            .do("init", (ctx) => {
+              ctx.count = 0
+              return ctx
+            })
+            .do("loop", ACTIVITY.WHILE, async (ctx) => {
+              await new Promise(resolve => setTimeout(resolve, 1))
+              return ctx.count < 2
+            }, (ctx) => {
+              ctx.count++
+              return ctx
+            })
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder)
+
+      const result = await runner.run({})
+      assert.equal(result.count, 2)
+    })
+  })
+
+  describe("UNTIL activities", () => {
+    it("loops until predicate is true", async () => {
+      const action = {
+        setup: (builder) => {
+          builder
+            .do("init", (ctx) => {
+              ctx.count = 0
+              return ctx
+            })
+            .do("loop", ACTIVITY.UNTIL, (ctx) => ctx.count >= 3, (ctx) => {
+              ctx.count++
+              return ctx
+            })
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder)
+
+      const result = await runner.run({})
+      assert.equal(result.count, 3)
+    })
+
+    it("executes at least once", async () => {
+      let executeCount = 0
+
+      const action = {
+        setup: (builder) => {
+          builder.do("loop", ACTIVITY.UNTIL, () => true, () => {
+            executeCount++
+          })
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder)
+
+      await runner.run({})
+      assert.equal(executeCount, 1)
+    })
+
+    it("handles async predicates", async () => {
+      const action = {
+        setup: (builder) => {
+          builder
+            .do("init", (ctx) => {
+              ctx.count = 0
+              return ctx
+            })
+            .do("loop", ACTIVITY.UNTIL, async (ctx) => {
+              await new Promise(resolve => setTimeout(resolve, 1))
+              return ctx.count >= 2
+            }, (ctx) => {
+              ctx.count++
+              return ctx
+            })
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder)
+
+      const result = await runner.run({})
+      assert.equal(result.count, 2)
+    })
+  })
+
+  describe("nested ActionBuilders", () => {
+    it("executes nested builder", async () => {
+      let innerExecuted = false
+
+      const innerAction = {
+        setup: (builder) => {
+          builder.do("inner", () => {
+            innerExecuted = true
+          })
+        }
+      }
+
+      const outerAction = {
+        setup: (builder) => {
+          builder.do("nested", ACTIVITY.WHILE, () => false, new ActionBuilder(innerAction))
+        }
+      }
+
+      const builder = new ActionBuilder(outerAction)
+      const runner = new ActionRunner(builder)
+
+      await runner.run({})
+      // Should not execute since predicate is false
+      assert.equal(innerExecuted, false)
+    })
+
+    it("passes context through nested builders", async () => {
+      const innerAction = {
+        setup: (builder) => {
+          builder.do("inner", (ctx) => {
+            ctx.innerValue = 42
+            return ctx
+          })
+        }
+      }
+
+      const outerAction = {
+        setup: (builder) => {
+          builder
+            .do("outer", (ctx) => {
+              ctx.outerValue = 10
+              return ctx
+            })
+            .do("nested", ACTIVITY.WHILE, (ctx) => !ctx.innerValue, new ActionBuilder(innerAction))
+        }
+      }
+
+      const builder = new ActionBuilder(outerAction)
+      const runner = new ActionRunner(builder)
+
+      const result = await runner.run({})
+      assert.equal(result.outerValue, 10)
+      assert.equal(result.innerValue, 42)
+    })
+  })
+
+  describe("error handling", () => {
+    it("throws on activity errors", async () => {
+      const action = {
+        setup: (builder) => {
+          builder.do("failing", () => {
+            throw new Error("Activity failed")
+          })
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder)
+
+      await assert.rejects(
+        () => runner.run({}),
+        /Activity failed/
+      )
+    })
+
+    it("throws on errors in WHILE activities", async () => {
+      const action = {
+        setup: (builder) => {
+          builder.do("loop", ACTIVITY.WHILE, () => true, () => {
+            throw new Error("Loop error")
+          })
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder)
+
+      await assert.rejects(
+        () => runner.run({}),
+        /Loop error/
+      )
+    })
+
+    it("throws on errors in UNTIL activities", async () => {
+      const action = {
+        setup: (builder) => {
+          builder.do("loop", ACTIVITY.UNTIL, () => false, () => {
+            throw new Error("Loop error")
+          })
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder)
+
+      await assert.rejects(
+        () => runner.run({}),
+        /Loop error/
+      )
+    })
+
+    it("validates activity kind combinations", async () => {
+      const action = {
+        setup: (builder) => {
+          builder.do("invalid", ACTIVITY.WHILE | ACTIVITY.UNTIL, () => true, () => {})
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder)
+
+      await assert.rejects(
+        () => runner.run({}),
+        /You can't combine activity kinds/
+      )
+    })
+  })
+
+  describe("pipe() inherited from Piper", () => {
+    it("processes multiple contexts concurrently", async () => {
+      const action = {
+        setup: (builder) => {
+          builder.do("process", (ctx) => {
+            ctx.processed = true
+            return ctx
+          })
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder)
+
+      const results = await runner.pipe([{id: 1}, {id: 2}, {id: 3}], 2)
+
+      assert.equal(results.length, 3)
+      results.forEach(result => {
+        assert.ok(result.processed)
+      })
+    })
+
+    it("respects maxConcurrent limit", async () => {
+      let concurrent = 0
+      let maxConcurrent = 0
+
+      const action = {
+        setup: (builder) => {
+          builder.do("process", async (ctx) => {
+            concurrent++
+            maxConcurrent = Math.max(maxConcurrent, concurrent)
+            await new Promise(resolve => setTimeout(resolve, 10))
+            concurrent--
+            return ctx
+          })
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder)
+
+      await runner.pipe([{}, {}, {}, {}, {}], 2)
+      assert.ok(maxConcurrent <= 2)
+    })
+  })
+
+  describe("toString()", () => {
+    it("returns string representation", () => {
+      const action = {setup: () => {}}
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder)
+
+      const str = runner.toString()
+      assert.ok(str.includes("ActionRunner"))
+    })
+  })
+
+  describe("activity bound to action", () => {
+    it("calls activity with action as this context", async () => {
+      class TestAction {
+        constructor() {
+          this.multiplier = 5
+        }
+
+        setup(builder) {
+          builder.do("test", function(ctx) {
+            ctx.result = this.multiplier * 10
+            return ctx
+          })
+        }
+      }
+
+      const builder = new ActionBuilder(new TestAction())
+      const runner = new ActionRunner(builder)
+
+      const result = await runner.run({})
+      assert.equal(result.result, 50)
+    })
+
+    it("binds predicate to action context", async () => {
+      class TestAction {
+        constructor() {
+          this.limit = 3
+        }
+
+        setup(builder) {
+          builder
+            .do("init", (ctx) => {
+              ctx.count = 0
+              return ctx
+            })
+            .do("loop", ACTIVITY.WHILE, function(ctx) {
+              return ctx.count < this.limit
+            }, function(ctx) {
+              ctx.count++
+              return ctx
+            })
+        }
+      }
+
+      const builder = new ActionBuilder(new TestAction())
+      const runner = new ActionRunner(builder)
+
+      const result = await runner.run({})
+      assert.equal(result.count, 3)
+    })
+  })
+})
