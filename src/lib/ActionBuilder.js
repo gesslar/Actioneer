@@ -2,6 +2,7 @@ import {Data, Sass, Valid} from "@gesslar/toolkit"
 
 import ActionWrapper from "./ActionWrapper.js"
 import ActionHooks from "./ActionHooks.js"
+import {ACTIVITY} from "./Activity.js"
 
 /** @typedef {import("./ActionRunner.js").default} ActionRunner */
 /** @typedef {typeof import("./Activity.js").ACTIVITY} ActivityFlags */
@@ -100,6 +101,7 @@ export default class ActionBuilder {
    * Overloads:
    * - do(name, op)
    * - do(name, kind, pred, opOrWrapper)
+   * - do(name, kind, splitter, rejoiner, opOrWrapper)
    *
    * @overload
    * @param {string|symbol} name Activity name
@@ -117,6 +119,16 @@ export default class ActionBuilder {
    */
 
   /**
+   * @overload
+   * @param {string|symbol} name Activity name
+   * @param {number} kind ACTIVITY.SPLIT flag.
+   * @param {(context: unknown) => unknown} splitter Splitter function for SPLIT mode.
+   * @param {(originalContext: unknown, splitResults: unknown) => unknown} rejoiner Rejoiner function for SPLIT mode.
+   * @param {ActionFunction|import("./ActionWrapper.js").default} op Operation or nested wrapper to execute.
+   * @returns {ActionBuilder}
+   */
+
+  /**
    * Handles runtime dispatch across the documented overloads.
    *
    * @param {string|symbol} name Activity name
@@ -128,7 +140,8 @@ export default class ActionBuilder {
 
     // signatures
     // name, [function] => once
-    // name, [number,function,function] => some kind of control operation
+    // name, [number,function,function] => some kind of control operation (WHILE/UNTIL)
+    // name, [number,function,function,function] => SPLIT operation with splitter/rejoiner
     // name, [number,function,ActionBuilder] => some kind of branch
 
     const action = this.#action
@@ -149,6 +162,19 @@ export default class ActionBuilder {
       Valid.type(op, "Function|ActionBuilder")
 
       Object.assign(activityDefinition, {kind, pred, op})
+    } else if(args.length === 4) {
+      const [kind, splitter, rejoiner, op] = args
+
+      Valid.type(kind, "Number")
+      Valid.type(splitter, "Function")
+      Valid.type(rejoiner, "Function")
+      Valid.type(op, "Function|ActionBuilder")
+
+      // Validate that kind is SPLIT
+      if((kind & ACTIVITY.SPLIT) !== ACTIVITY.SPLIT)
+        throw Sass.new("4-argument form of 'do' is only valid for ACTIVITY.SPLIT")
+
+      Object.assign(activityDefinition, {kind, splitter, rejoiner, op})
     } else {
       throw Sass.new("Invalid number of arguments passed to 'do'")
     }

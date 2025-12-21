@@ -140,6 +140,66 @@ describe("ActionBuilder", () => {
       assert.ok(builder)
     })
 
+    it("validates splitter is a function for SPLIT activities", () => {
+      const action = {setup: () => {}}
+      const builder = new ActionBuilder(action)
+
+      assert.throws(
+        () => builder.do("test", ACTIVITY.SPLIT, "not-a-function", () => {}, () => {})
+      )
+    })
+
+    it("validates rejoiner is a function for SPLIT activities", () => {
+      const action = {setup: () => {}}
+      const builder = new ActionBuilder(action)
+
+      assert.throws(
+        () => builder.do("test", ACTIVITY.SPLIT, () => {}, "not-a-function", () => {})
+      )
+    })
+
+    it("validates operation is a function for SPLIT activities", () => {
+      const action = {setup: () => {}}
+      const builder = new ActionBuilder(action)
+
+      assert.throws(
+        () => builder.do("test", ACTIVITY.SPLIT, () => {}, () => {}, "not-a-function")
+      )
+    })
+
+    it("throws error when using 4-argument form with non-SPLIT kind", () => {
+      const action = {setup: () => {}}
+      const builder = new ActionBuilder(action)
+
+      assert.throws(
+        () => builder.do("test", ACTIVITY.WHILE, () => {}, () => {}, () => {}),
+        /4-argument form of 'do' is only valid for ACTIVITY.SPLIT/
+      )
+    })
+
+    it("allows ActionBuilder as operation for SPLIT activities", () => {
+      const innerAction = {
+        setup: (builder) => {
+          builder.do("inner", () => {})
+        }
+      }
+
+      const action = {
+        setup: (builder) => {
+          builder.do(
+            "parallel",
+            ACTIVITY.SPLIT,
+            (ctx) => [ctx],
+            (ctx) => ctx,
+            new ActionBuilder(innerAction)
+          )
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      assert.ok(builder)
+    })
+
     it("throws error on duplicate activity name", () => {
       const action = {
         setup: () => {}

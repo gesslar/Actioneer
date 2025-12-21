@@ -112,7 +112,7 @@ export default class ActionRunner extends Piper {
                 if(await this.#hasPredicate(activity,predicate,context))
                   break
             }
-          } else if(kindSplit && activity.opKind === "ActionBuilder") {
+          } else if(kindSplit) {
             // SPLIT activity: parallel execution with splitter/rejoiner pattern
             const splitter = activity.splitter
             const rejoiner = activity.rejoiner
@@ -123,8 +123,19 @@ export default class ActionRunner extends Piper {
               )
 
             const original = context
-            const splitContext = splitter.call(activity.action,context)
-            const newContext = await this.#execute(activity,splitContext,true)
+            const splitContexts = splitter.call(activity.action,context)
+
+            let newContext
+            if(activity.opKind === "ActionBuilder") {
+              // Use parallel execution for ActionBuilder
+              newContext = await this.#execute(activity,splitContexts,true)
+            } else {
+              // For plain functions, process each split context
+              newContext = await Promise.all(
+                splitContexts.map(ctx => this.#execute(activity,ctx))
+              )
+            }
+
             const rejoined = rejoiner.call(activity.action, original,newContext)
 
             context = rejoined
