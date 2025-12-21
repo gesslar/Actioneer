@@ -171,7 +171,7 @@ export default class ActionHooks {
         return
 
       const stringActivityName = Data.isType(activityName, "Symbol")
-        ? activityName.description()
+        ? activityName.description
         : activityName
 
       const hookName = this.#getActivityHookName(kind, stringActivityName)
