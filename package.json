@@ -1,6 +1,6 @@
 {
   "name": "@gesslar/actioneer",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Ready? Set?? ACTION!! pew! pew! pew!",
   "main": "./src/index.js",
   "type": "module",
