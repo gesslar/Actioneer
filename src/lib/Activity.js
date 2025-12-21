@@ -8,32 +8,58 @@ import {Data} from "@gesslar/toolkit"
  *
  * @readonly
  * @enum {number}
+ * @property {number} WHILE - Execute activity while predicate returns true (2)
+ * @property {number} UNTIL - Execute activity until predicate returns true (4)
+ * @property {number} SPLIT - Execute activity with split/rejoin pattern for parallel execution (8)
  */
 export const ACTIVITY = Object.freeze({
   WHILE: 1<<1,
   UNTIL: 1<<2,
+  SPLIT: 1<<3,
 })
 
 export default class Activity {
+  /** @type {unknown} */
   #action = null
-  #name = null
-  #op = null
-  #kind = null
-  #pred = null
+  /** @type {unknown} */
+  #context = null
+  /** @type {ActionHooks|null} */
   #hooks = null
+  /** @type {number|null} */
+  #kind = null
+  /** @type {string|symbol} */
+  #name = null
+  /** @type {((context: unknown) => unknown|Promise<unknown>)|import("./ActionBuilder.js").default} */
+  #op = null
+  /** @type {((context: unknown) => boolean|Promise<boolean>)|null} */
+  #pred = null
+  /** @type {((originalContext: unknown, splitResults: unknown) => unknown)|null} */
+  #rejoiner = null
+  /** @type {((context: unknown) => unknown)|null} */
+  #splitter = null
 
   /**
    * Construct an Activity definition wrapper.
    *
-   * @param {{action: unknown, name: string, op: (context: unknown) => unknown|Promise<unknown>|unknown, kind?: number, pred?: (context: unknown) => boolean|Promise<boolean>, hooks?: ActionHooks}} init - Initial properties describing the activity operation, loop semantics, and predicate
+   * @param {object} init - Initial properties describing the activity operation, loop semantics, and predicate
+   * @param {unknown} init.action - Parent action instance
+   * @param {string|symbol} init.name - Activity identifier
+   * @param {(context: unknown) => unknown|Promise<unknown>|import("./ActionBuilder.js").default} init.op - Operation to execute
+   * @param {number} [init.kind] - Optional loop semantics flags
+   * @param {(context: unknown) => boolean|Promise<boolean>} [init.pred] - Optional predicate for WHILE/UNTIL
+   * @param {ActionHooks} [init.hooks] - Optional hooks instance
+   * @param {(context: unknown) => unknown} [init.splitter] - Optional splitter function for SPLIT activities
+   * @param {(originalContext: unknown, splitResults: unknown) => unknown} [init.rejoiner] - Optional rejoiner function for SPLIT activities
    */
-  constructor({action,name,op,kind,pred,hooks}) {
+  constructor({action,name,op,kind,pred,hooks,splitter,rejoiner}) {
+    this.#action = action
+    this.#hooks = hooks
+    this.#kind = kind
     this.#name = name
     this.#op = op
-    this.#kind = kind
-    this.#action = action
     this.#pred = pred
-    this.#hooks = hooks
+    this.#rejoiner = rejoiner
+    this.#splitter = splitter
   }
 
   /**
@@ -64,7 +90,16 @@ export default class Activity {
   }
 
   /**
-   * The operator kind name (Function or ActionWrapper).
+   * The current context (if set).
+   *
+   * @returns {unknown} Current context value
+   */
+  get context() {
+    return this.#context
+  }
+
+  /**
+   * The operator kind name (Function or ActionBuilder).
    *
    * @returns {string} - Kind name extracted via Data.typeOf
    */
@@ -73,12 +108,30 @@ export default class Activity {
   }
 
   /**
-   * The operator to execute (function or nested wrapper).
+   * The operator to execute (function or nested ActionBuilder).
    *
-   * @returns {unknown} - Activity operation
+   * @returns {(context: unknown) => unknown|Promise<unknown>|import("./ActionBuilder.js").default} - Activity operation
    */
   get op() {
     return this.#op
+  }
+
+  /**
+   * The splitter function for SPLIT activities.
+   *
+   * @returns {((context: unknown) => unknown)|null} Splitter function or null
+   */
+  get splitter() {
+    return this.#splitter
+  }
+
+  /**
+   * The rejoiner function for SPLIT activities.
+   *
+   * @returns {((originalContext: unknown, splitResults: unknown) => unknown)|null} Rejoiner function or null
+   */
+  get rejoiner() {
+    return this.#rejoiner
   }
 
   /**
@@ -94,7 +147,7 @@ export default class Activity {
    * Execute the activity with before/after hooks.
    *
    * @param {unknown} context - Mutable context flowing through the pipeline
-   * @returns {Promise<{activityResult: unknown}>} - Activity result wrapper with new context
+   * @returns {Promise<unknown>} - Activity result
    */
   async run(context) {
     // before hook
@@ -112,7 +165,7 @@ export default class Activity {
   /**
    * Attach hooks to this activity instance.
    *
-   * @param {unknown} hooks - Hooks instance with optional before$/after$ methods
+   * @param {ActionHooks} hooks - Hooks instance with optional before$/after$ methods
    * @returns {this} - This activity for chaining
    */
   setActionHooks(hooks) {
@@ -120,5 +173,14 @@ export default class Activity {
       this.#hooks = hooks
 
     return this
+  }
+
+  /**
+   * Get the hooks instance attached to this activity.
+   *
+   * @returns {ActionHooks|null} The hooks instance or null
+   */
+  get hooks() {
+    return this.#hooks
   }
 }
