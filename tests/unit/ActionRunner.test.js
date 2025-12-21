@@ -278,6 +278,178 @@ describe("ActionRunner", () => {
     })
   })
 
+  describe("SPLIT activities", () => {
+    it("executes SPLIT with plain function", async () => {
+      const action = {
+        setup: (builder) => {
+          builder
+            .do("init", (ctx) => {
+              ctx.items = ["apple", "banana", "cherry"]
+              return ctx
+            })
+            .do(
+              "parallel",
+              ACTIVITY.SPLIT,
+              (ctx) => ctx.items.map(item => ({item})),
+              (original, results) => {
+                original.results = results.map(r => r.item)
+                return original
+              },
+              (ctx) => {
+                ctx.item = ctx.item.toUpperCase()
+                return ctx
+              }
+            )
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder)
+
+      const result = await runner.run({})
+      assert.deepEqual(result.results, ["APPLE", "BANANA", "CHERRY"])
+    })
+
+    it("executes SPLIT with nested ActionBuilder", async () => {
+      const processor = {
+        setup: (builder) => {
+          builder
+            .do("uppercase", (ctx) => {
+              ctx.item = ctx.item.toUpperCase()
+              return ctx
+            })
+            .do("suffix", (ctx) => {
+              ctx.item = ctx.item + "!"
+              return ctx
+            })
+        }
+      }
+
+      const action = {
+        setup: (builder) => {
+          builder
+            .do("init", (ctx) => {
+              ctx.items = ["a", "b", "c"]
+              return ctx
+            })
+            .do(
+              "parallel",
+              ACTIVITY.SPLIT,
+              (ctx) => ctx.items.map(item => ({item})),
+              (original, results) => {
+                original.results = results.map(r => r.item)
+                return original
+              },
+              new ActionBuilder(processor)
+            )
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder)
+
+      const result = await runner.run({})
+      assert.deepEqual(result.results, ["A!", "B!", "C!"])
+    })
+
+    it("passes original context to rejoiner", async () => {
+      let originalSeen = null
+
+      const action = {
+        setup: (builder) => {
+          builder
+            .do("init", (ctx) => {
+              ctx.original = "preserved"
+              ctx.items = [1, 2]
+              return ctx
+            })
+            .do(
+              "parallel",
+              ACTIVITY.SPLIT,
+              (ctx) => ctx.items.map(n => ({n})),
+              (original, results) => {
+                originalSeen = original
+                original.sum = results.reduce((sum, r) => sum + r.n, 0)
+                return original
+              },
+              (ctx) => {
+                ctx.n = ctx.n * 2
+                return ctx
+              }
+            )
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder)
+
+      const result = await runner.run({})
+      assert.equal(originalSeen.original, "preserved")
+      assert.equal(result.sum, 6) // (1*2) + (2*2)
+    })
+
+    it("handles empty split results", async () => {
+      const action = {
+        setup: (builder) => {
+          builder
+            .do("init", (ctx) => {
+              ctx.items = []
+              return ctx
+            })
+            .do(
+              "parallel",
+              ACTIVITY.SPLIT,
+              (ctx) => ctx.items.map(item => ({item})),
+              (original, results) => {
+                original.count = results.length
+                return original
+              },
+              (ctx) => ctx
+            )
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder)
+
+      const result = await runner.run({})
+      assert.equal(result.count, 0)
+    })
+
+    it("handles async operations in SPLIT", async () => {
+      const action = {
+        setup: (builder) => {
+          builder
+            .do("init", (ctx) => {
+              ctx.items = [1, 2, 3]
+              return ctx
+            })
+            .do(
+              "parallel",
+              ACTIVITY.SPLIT,
+              (ctx) => ctx.items.map(n => ({n})),
+              (original, results) => {
+                original.results = results.map(r => r.n)
+                return original
+              },
+              async (ctx) => {
+                // Simulate async operation
+                await new Promise(resolve => setTimeout(resolve, 10))
+                ctx.n = ctx.n * 10
+                return ctx
+              }
+            )
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder)
+
+      const result = await runner.run({})
+      assert.deepEqual(result.results, [10, 20, 30])
+    })
+  })
+
   describe("nested ActionBuilders", () => {
     it("executes nested builder", async () => {
       let innerExecuted = false
