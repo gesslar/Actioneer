@@ -5,33 +5,35 @@ import assert from 'node:assert/strict'
 
 import {ActionBuilder, ActionRunner, ACTIVITY} from '../../src/index.js'
 
+const noopDebug = () => {}
+
 describe('Nested ActionBuilders with hooks', () => {
   it('propagates hooks to nested ActionBuilder with WHILE activity', async () => {
     const executionLog = []
     let iterations = 0
-    
+
     class TestHooks {
       constructor({debug}) {
         this.debug = debug
       }
-      
+
       async before$outer(context) {
         executionLog.push('before-outer')
       }
-      
+
       async after$outer(context) {
         executionLog.push('after-outer')
       }
-      
+
       async before$inner(context) {
         executionLog.push('before-inner')
       }
-      
+
       async after$inner(context) {
         executionLog.push('after-inner')
       }
     }
-    
+
     class InnerAction {
       setup(builder) {
         builder.do('inner', ctx => {
@@ -40,11 +42,11 @@ describe('Nested ActionBuilders with hooks', () => {
         })
       }
     }
-    
+
     class OuterAction {
       setup(builder) {
         builder
-          .withHooks(new TestHooks({debug: () => {}}))
+          .withHooks(new TestHooks({debug: noopDebug}))
           .do('outer', ctx => {
             executionLog.push('outer')
             return ctx
@@ -98,7 +100,7 @@ describe('Nested ActionBuilders with hooks', () => {
     class OuterAction {
       setup(builder) {
         builder
-          .withHooks(new TestHooks({debug: () => {}}))
+          .withHooks(new TestHooks({debug: noopDebug}))
           .do('outer', ctx => {
             executionLog.push('outer')
             // Return an ActionBuilder dynamically
