@@ -236,8 +236,14 @@ export default class ActionBuilder {
     const newHooks = ActionHooks.new
 
     const hooks = this.#hooks
-    if(hooks)
+    if(hooks) {
+      // If hooks is already an ActionHooks instance, use it directly
+      if(hooks instanceof ActionHooks)
+        return hooks
+
+      // Otherwise, wrap it in a new ActionHooks instance
       return await newHooks({hooks}, this.#debug)
+    }
 
     const hooksFile = this.#hooksFile
     const hooksKind = this.#hooksKind

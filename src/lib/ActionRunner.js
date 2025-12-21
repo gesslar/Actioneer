@@ -162,8 +162,8 @@ export default class ActionRunner extends Piper {
     const opKind = activity.opKind
 
     if(opKind === "ActionBuilder") {
-      if(activity.hooks && !activity.op.hasActionHooks)
-        activity.op.withActionHooks(activity.hooks)
+      if(activity.hooks)
+        activity.op.withHooks(activity.hooks)
 
       const runner = new this.constructor(activity.op, {
         debug: this.#debug, name: activity.name
@@ -180,7 +180,7 @@ export default class ActionRunner extends Piper {
 
         if(Data.isType(result, "ActionBuilder")) {
           if(activity.hooks)
-            result.withActionHooks(activity.hooks)
+            result.withHooks(activity.hooks)
 
           const runner = new this.constructor(result, {
             debug: this.#debug, name: result.name
