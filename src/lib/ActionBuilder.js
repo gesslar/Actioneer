@@ -182,9 +182,14 @@ export default class ActionBuilder {
    *
    * @param {import("./ActionHooks.js").default} hooks An already-instantiated hooks instance.
    * @returns {ActionBuilder} The builder instance for chaining.
-   * @throws {Sass} If hooks have already been configured.
+   * @throws {Sass} If hooks have already been configured with a different instance.
    */
   withHooks(hooks) {
+    // If the same hooks instance is already set, this is idempotent - just return
+    if(this.#hooks === hooks) {
+      return this
+    }
+
     Valid.assert(this.#hooksFile === null, "Hooks have already been configured.")
     Valid.assert(this.#hooksKind === null, "Hooks have already been configured.")
     Valid.assert(this.#hooks === null, "Hooks have already been configured.")

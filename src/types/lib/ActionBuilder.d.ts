@@ -89,7 +89,7 @@ export default class ActionBuilder {
    *
    * @param {import("./ActionHooks.js").default} hooks An already-instantiated hooks instance.
    * @returns {ActionBuilder} The builder instance for chaining.
-   * @throws {Sass} If hooks have already been configured.
+   * @throws {Sass} If hooks have already been configured with a different instance.
    */
   withHooks(hooks: import('./ActionHooks.js').default): ActionBuilder
   /**
