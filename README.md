@@ -335,13 +335,21 @@ Examples of minimal configs and one-liners to run them are in the project discus
 
 ## Testing
 
-Run the small smoke tests with Node's built-in test runner:
+Run the comprehensive test suite with Node's built-in test runner:
 
 ```bash
 npm test
 ```
 
-The test suite is intentionally small; it verifies public exports and a few core behaviors. Add more unit tests under `tests/` if you need deeper coverage.
+The test suite includes 150+ tests covering all core classes and behaviors:
+- **Activity** - Activity definitions, ACTIVITY flags (WHILE, UNTIL, SPLIT), and execution
+- **ActionBuilder** - Fluent builder API, activity registration, and hooks configuration
+- **ActionWrapper** - Activity iteration and integration with ActionBuilder
+- **ActionRunner** - Pipeline execution, loop semantics, nested builders, and error handling
+- **ActionHooks** - Hook lifecycle, loading from files, and timeout handling
+- **Piper** - Concurrent processing, worker pools, and lifecycle hooks
+
+Tests are organized in `tests/unit/` with one file per class. All tests use Node's native test runner and assertion library.
 
 ## Publishing
 
