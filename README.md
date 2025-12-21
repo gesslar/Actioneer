@@ -342,6 +342,7 @@ npm test
 ```
 
 The test suite includes 150+ tests covering all core classes and behaviors:
+
 - **Activity** - Activity definitions, ACTIVITY flags (WHILE, UNTIL, SPLIT), and execution
 - **ActionBuilder** - Fluent builder API, activity registration, and hooks configuration
 - **ActionWrapper** - Activity iteration and integration with ActionBuilder
