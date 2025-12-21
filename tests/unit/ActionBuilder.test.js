@@ -293,6 +293,17 @@ describe("ActionBuilder", () => {
       )
     })
 
+    it("allows calling withHooks with same instance (idempotent)", () => {
+      const action = {setup: () => {}}
+      const builder = new ActionBuilder(action)
+
+      const hooks = {}
+      builder.withHooks(hooks)
+
+      // Should not throw when called with the same instance
+      assert.doesNotThrow(() => builder.withHooks(hooks))
+    })
+
     it("throws error when mixing withHooks and withHooksFile", () => {
       const action = {setup: () => {}}
       const builder = new ActionBuilder(action)
