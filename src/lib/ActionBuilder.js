@@ -90,6 +90,10 @@ export default class ActionBuilder {
     }
   }
 
+  get tag() {
+    return this.#tag
+  }
+
   /**
    * Register an activity that the runner can execute.
    *
