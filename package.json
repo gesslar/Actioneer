@@ -56,6 +56,6 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@gesslar/toolkit": "^0.7.0"
+    "@gesslar/toolkit": "^1.9.1"
   }
 }
