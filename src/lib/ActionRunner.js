@@ -1,4 +1,4 @@
-import {Data, Sass, Valid} from "@gesslar/toolkit"
+import {Data, Sass, Util, Valid} from "@gesslar/toolkit"
 
 import ActionBuilder from "./ActionBuilder.js"
 import {ACTIVITY} from "./Activity.js"
@@ -113,30 +113,45 @@ export default class ActionRunner extends Piper {
                   break
             }
           } else if(kindSplit) {
-            // SPLIT activity: parallel execution with splitter/rejoiner pattern
-            const splitter = activity.splitter
-            const rejoiner = activity.rejoiner
+            // SPLIT activity: parallel execution with splitter/rejoiner
+            // pattern
+            const {splitter, rejoiner} = activity
 
             if(!splitter || !rejoiner)
               throw Sass.new(
-                `SPLIT activity "${String(activity.name)}" requires both splitter and rejoiner functions.`
+                `SPLIT activity "${String(activity.name)}" requires both ` +
+                `splitter and rejoiner functions.`
               )
 
             const original = context
-            const splitContexts = splitter.call(activity.action,context)
+            const splitContexts = await splitter.call(activity.action, context)
 
-            let newContext
+            let settled
+
             if(activity.opKind === "ActionBuilder") {
-              // Use parallel execution for ActionBuilder
-              newContext = await this.#execute(activity,splitContexts,true)
+              // Use parallel execution for ActionBuilder with concurrency control
+              // pipe() now returns settled results
+              if(activity.hooks)
+                activity.op.withHooks(activity.hooks)
+
+              const runner = new this.constructor(activity.op, {
+                debug: this.#debug, name: activity.name
+              })
+
+              // pipe() returns settled results with concurrency control
+              settled = await runner.pipe(splitContexts)
             } else {
               // For plain functions, process each split context
-              newContext = await Promise.all(
-                splitContexts.map(ctx => this.#execute(activity,ctx))
+              settled = await Util.settleAll(
+                splitContexts.map(ctx => this.#execute(activity, ctx))
               )
             }
 
-            const rejoined = rejoiner.call(activity.action, original,newContext)
+            const rejoined = await rejoiner.call(
+              activity.action,
+              original,
+              settled
+            )
 
             context = rejoined
           } else {
