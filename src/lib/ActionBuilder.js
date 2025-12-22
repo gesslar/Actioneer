@@ -247,7 +247,7 @@ export default class ActionBuilder {
   async build() {
     const action = this.#action
 
-    if(!action.tag) {
+    if(action && !action.tag) {
       action.tag = this.#tag
 
       action.setup.call(action, this)

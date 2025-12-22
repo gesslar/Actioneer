@@ -831,4 +831,111 @@ describe("ActionRunner", () => {
       assert.equal(result.count, 3)
     })
   })
+
+  describe("ActionBuilder without parent action in nested context", () => {
+    it("executes ActionBuilder without parent action as nested step", async () => {
+      const action = {
+        setup: (builder) => {
+          builder
+            .do("init", (ctx) => {
+              ctx.value = 5
+              return ctx
+            })
+            .do("nested", ACTIVITY.WHILE, (ctx) => ctx.value < 10,
+              new ActionBuilder()
+                .do("increment", (ctx) => {
+                  ctx.value += 1
+                  return ctx
+                })
+            )
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder)
+
+      const result = await runner.run({})
+      assert.equal(result.value, 10)
+    })
+
+    it("executes ActionBuilder without parent in SPLIT activity", async () => {
+      const action = {
+        setup: (builder) => {
+          builder
+            .do("init", (ctx) => {
+              ctx.items = [1, 2, 3]
+              return ctx
+            })
+            .do(
+              "parallel",
+              ACTIVITY.SPLIT,
+              (ctx) => ctx.items.map(n => ({n})),
+              (original, settledResults) => {
+                original.results = settledResults
+                  .filter(r => r.status === "fulfilled")
+                  .map(r => r.value.n)
+                return original
+              },
+              new ActionBuilder()
+                .do("multiply", (ctx) => {
+                  ctx.n = ctx.n * 100
+                  return ctx
+                })
+            )
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder)
+
+      const result = await runner.run({})
+      assert.deepEqual(result.results, [100, 200, 300])
+    })
+
+    it("handles complex nested ActionBuilders without parent actions", async () => {
+      const action = {
+        setup: (builder) => {
+          builder
+            .do("init", (ctx) => {
+              ctx.batches = [[1, 2], [3, 4]]
+              return ctx
+            })
+            .do(
+              "process-batches",
+              ACTIVITY.SPLIT,
+              (ctx) => ctx.batches.map(batch => ({batch})),
+              (original, settledResults) => {
+                original.allResults = settledResults
+                  .filter(r => r.status === "fulfilled")
+                  .flatMap(r => r.value.batchResults)
+                return original
+              },
+              // Nested builder without parent that itself contains SPLIT
+              new ActionBuilder()
+                .do(
+                  "process-items",
+                  ACTIVITY.SPLIT,
+                  (ctx) => ctx.batch.map(n => ({n})),
+                  (batchCtx, settledResults) => {
+                    batchCtx.batchResults = settledResults
+                      .filter(r => r.status === "fulfilled")
+                      .map(r => r.value.n)
+                    return batchCtx
+                  },
+                  (itemCtx) => {
+                    itemCtx.n = itemCtx.n * 10
+                    return itemCtx
+                  }
+                )
+            )
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder)
+
+      const result = await runner.run({})
+      assert.deepEqual(result.allResults, [10, 20, 30, 40])
+    })
+  })
 })
