@@ -502,4 +502,76 @@ describe("ActionBuilder", () => {
       assert.ok(builder)
     })
   })
+
+  describe("ActionBuilder without parent action", () => {
+    it("creates builder without action and registers activities", async () => {
+      const builder = new ActionBuilder()
+        .do("step1", (ctx) => {
+          ctx.count = 1
+          return ctx
+        })
+        .do("step2", (ctx) => {
+          ctx.count += 1
+          return ctx
+        })
+
+      const wrapper = await builder.build()
+      assert.ok(wrapper)
+
+      // Verify activities were registered
+      const activities = []
+      for(const activity of wrapper.activities) {
+        activities.push(activity.name)
+      }
+
+      assert.deepEqual(activities, ["step1", "step2"])
+    })
+
+    it("can be used as nested builder in SPLIT activity", async () => {
+      const action = {
+        setup: (builder) => {
+          builder.do(
+            "parallel",
+            ACTIVITY.SPLIT,
+            (ctx) => [{n: 1}, {n: 2}],
+            (original, settled) => {
+              original.results = settled
+                .filter(r => r.status === "fulfilled")
+                .map(r => r.value.n)
+              return original
+            },
+            // Nested builder without parent action
+            new ActionBuilder()
+              .do("multiply", (ctx) => {
+                ctx.n = ctx.n * 10
+                return ctx
+              })
+          )
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      await builder.build()
+
+      assert.ok(builder)
+    })
+
+    it("generates unique tag for builder without action", async () => {
+      const builder = new ActionBuilder()
+
+      assert.ok(builder.tag)
+      assert.equal(typeof builder.tag, "symbol")
+    })
+
+    it("can register activities and build multiple times", async () => {
+      const builder = new ActionBuilder()
+        .do("step", (ctx) => ctx)
+
+      const wrapper1 = await builder.build()
+      const wrapper2 = await builder.build()
+
+      assert.ok(wrapper1)
+      assert.ok(wrapper2)
+    })
+  })
 })
