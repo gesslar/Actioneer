@@ -291,8 +291,11 @@ describe("ActionRunner", () => {
               "parallel",
               ACTIVITY.SPLIT,
               (ctx) => ctx.items.map(item => ({item})),
-              (original, results) => {
-                original.results = results.map(r => r.item)
+              (original, settledResults) => {
+                // settledResults is from Promise.allSettled
+                original.results = settledResults
+                  .filter(r => r.status === "fulfilled")
+                  .map(r => r.value.item)
                 return original
               },
               (ctx) => {
@@ -336,8 +339,11 @@ describe("ActionRunner", () => {
               "parallel",
               ACTIVITY.SPLIT,
               (ctx) => ctx.items.map(item => ({item})),
-              (original, results) => {
-                original.results = results.map(r => r.item)
+              (original, settledResults) => {
+                // Nested ActionBuilder also returns settled results
+                original.results = settledResults
+                  .filter(r => r.status === "fulfilled")
+                  .map(r => r.value.item)
                 return original
               },
               new ActionBuilder(processor)
@@ -367,9 +373,12 @@ describe("ActionRunner", () => {
               "parallel",
               ACTIVITY.SPLIT,
               (ctx) => ctx.items.map(n => ({n})),
-              (original, results) => {
+              (original, settledResults) => {
                 originalSeen = original
-                original.sum = results.reduce((sum, r) => sum + r.n, 0)
+                // Extract fulfilled values from settled results
+                original.sum = settledResults
+                  .filter(r => r.status === "fulfilled")
+                  .reduce((sum, r) => sum + r.value.n, 0)
                 return original
               },
               (ctx) => {
@@ -400,8 +409,8 @@ describe("ActionRunner", () => {
               "parallel",
               ACTIVITY.SPLIT,
               (ctx) => ctx.items.map(item => ({item})),
-              (original, results) => {
-                original.count = results.length
+              (original, settledResults) => {
+                original.count = settledResults.length
                 return original
               },
               (ctx) => ctx
@@ -428,8 +437,10 @@ describe("ActionRunner", () => {
               "parallel",
               ACTIVITY.SPLIT,
               (ctx) => ctx.items.map(n => ({n})),
-              (original, results) => {
-                original.results = results.map(r => r.n)
+              (original, settledResults) => {
+                original.results = settledResults
+                  .filter(r => r.status === "fulfilled")
+                  .map(r => r.value.n)
                 return original
               },
               async (ctx) => {
@@ -447,6 +458,140 @@ describe("ActionRunner", () => {
 
       const result = await runner.run({})
       assert.deepEqual(result.results, [10, 20, 30])
+    })
+
+    it("handles rejected promises in SPLIT", async () => {
+      const action = {
+        setup: (builder) => {
+          builder
+            .do("init", (ctx) => {
+              ctx.items = [1, 2, 3]
+              return ctx
+            })
+            .do(
+              "parallel",
+              ACTIVITY.SPLIT,
+              (ctx) => ctx.items.map(n => ({n})),
+              (original, settledResults) => {
+                // Count fulfilled and rejected
+                original.fulfilled = settledResults.filter(r => r.status === "fulfilled").length
+                original.rejected = settledResults.filter(r => r.status === "rejected").length
+                original.results = settledResults
+                  .filter(r => r.status === "fulfilled")
+                  .map(r => r.value.n)
+                return original
+              },
+              async (ctx) => {
+                if (ctx.n === 2) {
+                  throw new Error("Failed on 2")
+                }
+                ctx.n = ctx.n * 10
+                return ctx
+              }
+            )
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder)
+
+      const result = await runner.run({})
+      assert.equal(result.fulfilled, 2)
+      assert.equal(result.rejected, 1)
+      assert.deepEqual(result.results, [10, 30])
+    })
+
+    it("handles mixed fulfilled and rejected results in SPLIT", async () => {
+      const action = {
+        setup: (builder) => {
+          builder
+            .do("init", (ctx) => {
+              ctx.items = ["a", "b", "c", "d"]
+              return ctx
+            })
+            .do(
+              "parallel",
+              ACTIVITY.SPLIT,
+              (ctx) => ctx.items.map(item => ({item})),
+              (original, settledResults) => {
+                original.successful = []
+                original.failed = []
+
+                settledResults.forEach(result => {
+                  if (result.status === "fulfilled") {
+                    original.successful.push(result.value.item)
+                  } else {
+                    original.failed.push(result.reason.message)
+                  }
+                })
+
+                return original
+              },
+              async (ctx) => {
+                if (ctx.item === "b" || ctx.item === "d") {
+                  throw new Error(`Failed: ${ctx.item}`)
+                }
+                ctx.item = ctx.item.toUpperCase()
+                return ctx
+              }
+            )
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder)
+
+      const result = await runner.run({})
+      assert.deepEqual(result.successful, ["A", "C"])
+      assert.deepEqual(result.failed, ["Failed: b", "Failed: d"])
+    })
+
+    it("handles rejected promises in SPLIT with nested ActionBuilder", async () => {
+      const processor = {
+        setup: (builder) => {
+          builder
+            .do("process", (ctx) => {
+              if (ctx.n === 2) {
+                throw new Error("Nested pipeline failed on 2")
+              }
+              ctx.n = ctx.n * 100
+              return ctx
+            })
+        }
+      }
+
+      const action = {
+        setup: (builder) => {
+          builder
+            .do("init", (ctx) => {
+              ctx.items = [1, 2, 3]
+              return ctx
+            })
+            .do(
+              "parallel",
+              ACTIVITY.SPLIT,
+              (ctx) => ctx.items.map(n => ({n})),
+              (original, settledResults) => {
+                // Nested ActionBuilder should also return settled results
+                original.fulfilled = settledResults.filter(r => r.status === "fulfilled").length
+                original.rejected = settledResults.filter(r => r.status === "rejected").length
+                original.results = settledResults
+                  .filter(r => r.status === "fulfilled")
+                  .map(r => r.value.n)
+                return original
+              },
+              new ActionBuilder(processor)
+            )
+        }
+      }
+
+      const builder = new ActionBuilder(action)
+      const runner = new ActionRunner(builder)
+
+      const result = await runner.run({})
+      assert.equal(result.fulfilled, 2)
+      assert.equal(result.rejected, 1)
+      assert.deepEqual(result.results, [100, 300])
     })
   })
 
@@ -596,7 +741,8 @@ describe("ActionRunner", () => {
 
       assert.equal(results.length, 3)
       results.forEach(result => {
-        assert.ok(result.processed)
+        assert.equal(result.status, "fulfilled")
+        assert.ok(result.value.processed)
       })
     })
 

@@ -79,7 +79,7 @@ export default class Piper {
    *
    * @param {Array<unknown>|unknown} items - Items to process
    * @param {number} maxConcurrent - Maximum concurrent items to process
-   * @returns {Promise<Array<unknown>>} - Collected results from steps
+   * @returns {Promise<Array<{status: string, value?: unknown, reason?: unknown}>>} - Settled results from processing
    */
   async pipe(items, maxConcurrent = 10) {
     items = Array.isArray(items)
@@ -87,20 +87,23 @@ export default class Piper {
       : [items]
 
     let itemIndex = 0
-    const allResults = []
+    const allResults = new Array(items.length)
 
     const processWorker = async() => {
       while(true) {
         const currentIndex = itemIndex++
+
         if(currentIndex >= items.length)
           break
 
         const item = items[currentIndex]
+
         try {
           const result = await this.#processItem(item)
-          allResults.push(result)
+
+          allResults[currentIndex] = {status: "fulfilled", value: result}
         } catch(error) {
-          throw Sass.new("Processing pipeline item.", error)
+          allResults[currentIndex] = {status: "rejected", reason: error}
         }
       }
     }
@@ -108,6 +111,7 @@ export default class Piper {
     const setupResult = await Util.settleAll(
       [...this.#lifeCycle.get("setup")].map(e => e())
     )
+
     this.#processResult("Setting up the pipeline.", setupResult)
 
     try {
@@ -118,14 +122,14 @@ export default class Piper {
       for(let i = 0; i < workerCount; i++)
         workers.push(processWorker())
 
-      // Wait for all workers to complete
-      const processResult = await Util.settleAll(workers)
-      this.#processResult("Processing pipeline.", processResult)
+      // Wait for all workers to complete - don't throw on worker failures
+      await Promise.all(workers)
     } finally {
       // Run cleanup hooks
       const teardownResult = await Util.settleAll(
         [...this.#lifeCycle.get("teardown")].map(e => e())
       )
+
       this.#processResult("Tearing down the pipeline.", teardownResult)
     }
 

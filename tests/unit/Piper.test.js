@@ -122,7 +122,8 @@ describe("Piper", () => {
 
       const results = await piper.pipe([5])
       assert.equal(results.length, 1)
-      assert.equal(results[0], 10)
+      assert.equal(results[0].status, "fulfilled")
+      assert.equal(results[0].value, 10)
     })
 
     it("processes multiple items through pipeline", async () => {
@@ -131,7 +132,12 @@ describe("Piper", () => {
 
       const results = await piper.pipe([1, 2, 3])
       assert.equal(results.length, 3)
-      assert.deepEqual(results, [2, 4, 6])
+      assert.equal(results[0].status, "fulfilled")
+      assert.equal(results[0].value, 2)
+      assert.equal(results[1].status, "fulfilled")
+      assert.equal(results[1].value, 4)
+      assert.equal(results[2].status, "fulfilled")
+      assert.equal(results[2].value, 6)
     })
 
     it("converts non-array item to array", async () => {
@@ -140,7 +146,8 @@ describe("Piper", () => {
 
       const results = await piper.pipe(5)
       assert.equal(results.length, 1)
-      assert.equal(results[0], 6)
+      assert.equal(results[0].status, "fulfilled")
+      assert.equal(results[0].value, 6)
     })
 
     it("processes items through multiple steps", async () => {
@@ -150,7 +157,8 @@ describe("Piper", () => {
         .addStep((item) => item + 10)
 
       const results = await piper.pipe([5])
-      assert.equal(results[0], 20) // (5 * 2) + 10
+      assert.equal(results[0].status, "fulfilled")
+      assert.equal(results[0].value, 20) // (5 * 2) + 10
     })
 
     it("respects maxConcurrent parameter", async () => {
@@ -209,12 +217,8 @@ describe("Piper", () => {
         cleanupCalled = true
       })
 
-      try {
-        await piper.pipe([1])
-      } catch(error) {
-        // Expected
-      }
-
+      const results = await piper.pipe([1])
+      assert.equal(results[0].status, "rejected")
       assert.ok(cleanupCalled)
     })
 
@@ -234,7 +238,8 @@ describe("Piper", () => {
       })
 
       const results = await piper.pipe([5])
-      assert.equal(results[0], 10)
+      assert.equal(results[0].status, "fulfilled")
+      assert.equal(results[0].value, 10)
     })
 
     it("preserves result when step returns undefined", async () => {
@@ -245,7 +250,8 @@ describe("Piper", () => {
         .addStep((item) => item + 1) // Should still receive previous result
 
       const results = await piper.pipe([5])
-      assert.equal(results[0], 11) // (5 * 2) + 1
+      assert.equal(results[0].status, "fulfilled")
+      assert.equal(results[0].value, 11) // (5 * 2) + 1
     })
 
     it("handles optional non-required steps that fail", async () => {
@@ -258,19 +264,20 @@ describe("Piper", () => {
         .addStep((item) => item + 1, {required: true})
 
       const results = await piper.pipe([5])
-      assert.equal(results[0], 11) // (5 * 2) + 1
+      assert.equal(results[0].status, "fulfilled")
+      assert.equal(results[0].value, 11) // (5 * 2) + 1
     })
 
-    it("throws error when required step fails", async () => {
+    it("returns rejected result when required step fails", async () => {
       const piper = new Piper()
       piper.addStep(() => {
         throw new Error("Required error")
       }, {required: true, name: "failing-step"})
 
-      await assert.rejects(
-        () => piper.pipe([1]),
-        /Processing pipeline/
-      )
+      const results = await piper.pipe([1])
+      assert.equal(results[0].status, "rejected")
+      assert.ok(results[0].reason)
+      assert.match(results[0].reason.message, /Required error/)
     })
   })
 
@@ -356,7 +363,8 @@ describe("Piper", () => {
       piper.addStep((item) => item * 2)
 
       const results = await piper.pipe([5], 1)
-      assert.equal(results[0], 10)
+      assert.equal(results[0].status, "fulfilled")
+      assert.equal(results[0].value, 10)
     })
   })
 
@@ -367,10 +375,10 @@ describe("Piper", () => {
         throw new Error("Step failed")
       })
 
-      await assert.rejects(
-        () => piper.pipe([1]),
-        /Processing pipeline/
-      )
+      const results = await piper.pipe([1])
+      assert.equal(results[0].status, "rejected")
+      assert.ok(results[0].reason)
+      assert.match(results[0].reason.message, /Step failed/)
     })
 
     it("throws on setup errors", async () => {

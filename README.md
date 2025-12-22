@@ -30,8 +30,16 @@ class MyAction {
 
 const builder = new ActionBuilder(new MyAction())
 const runner = new ActionRunner(builder)
-const result = await runner.pipe([{}], 4) // run up to 4 contexts concurrently
-console.log(result)
+const results = await runner.pipe([{}], 4) // run up to 4 contexts concurrently
+
+// pipe() returns settled results: {status: "fulfilled", value: ...} or {status: "rejected", reason: ...}
+results.forEach(result => {
+  if (result.status === "fulfilled") {
+    console.log("Count:", result.value)
+  } else {
+    console.error("Error:", result.reason)
+  }
+})
 ```
 
 ## Types (TypeScript / VS Code)
@@ -154,8 +162,39 @@ class ParallelProcessor {
 
 1. The **splitter** function receives the context and returns an array of contexts (one per parallel task)
 2. Each split context is processed in parallel through the **operation** function
-3. The **rejoiner** function receives the original context and the array of processed results
+3. The **rejoiner** function receives the original context and the array of settled results from `Promise.allSettled()`
 4. The rejoiner combines the results and returns the updated context
+
+**Important: SPLIT uses `Promise.allSettled()`**
+
+The SPLIT mode uses `Promise.allSettled()` internally to execute parallel operations. This means your **rejoiner** function will receive an array of settlement objects, not the raw context values. Each element in the array will be either:
+
+- `{ status: "fulfilled", value: <result> }` for successful operations
+- `{ status: "rejected", reason: <error> }` for failed operations
+
+Your rejoiner must handle settled results accordingly. You can process them however you need - check each `status` manually, or use helper utilities like those in `@gesslar/toolkit`:
+
+```js
+import { Util } from "@gesslar/toolkit"
+
+#rejoin = (originalCtx, settledResults) => {
+  // settledResults is an array of settlement objects
+  // Each has either { status: "fulfilled", value: ... }
+  // or { status: "rejected", reason: ... }
+
+  // Example: extract only successful results
+  originalCtx.results = Util.fulfilledValues(settledResults)
+
+  // Example: check for any failures
+  if (Util.anyRejected(settledResults)) {
+    originalCtx.errors = Util.rejectedReasons(
+      Util.settledAndRejected(settledResults)
+    )
+  }
+
+  return originalCtx
+}
+```
 
 **Nested Pipelines with SPLIT:**
 
@@ -195,6 +234,68 @@ class NestedParallel {
 | **WHILE**   | `.do(name, ACTIVITY.WHILE, predicate, operation)`          | Before iteration | Loop while condition is true         |
 | **UNTIL**   | `.do(name, ACTIVITY.UNTIL, predicate, operation)`          | After iteration  | Loop until condition is true         |
 | **SPLIT**   | `.do(name, ACTIVITY.SPLIT, splitter, rejoiner, operation)` | N/A              | Parallel execution with split/rejoin |
+
+## Running Actions: `run()` vs `pipe()`
+
+ActionRunner provides two methods for executing your action pipelines:
+
+### `run(context)` - Single Context Execution
+
+Executes the pipeline once with a single context. Returns the final context value directly, or throws if an error occurs.
+
+```js
+const builder = new ActionBuilder(new MyAction())
+const runner = new ActionRunner(builder)
+
+try {
+  const result = await runner.run({input: "data"})
+  console.log(result) // Final context value
+} catch (error) {
+  console.error("Pipeline failed:", error)
+}
+```
+
+**Use `run()` when:**
+
+- Processing a single context
+- You want errors to throw immediately
+- You prefer traditional try/catch error handling
+
+### `pipe(contexts, maxConcurrent)` - Concurrent Batch Execution
+
+Executes the pipeline concurrently across multiple contexts with a configurable concurrency limit. Returns an array of **settled results** - never throws on individual pipeline failures.
+
+```js
+const builder = new ActionBuilder(new MyAction())
+const runner = new ActionRunner(builder)
+
+const contexts = [{id: 1}, {id: 2}, {id: 3}]
+const results = await runner.pipe(contexts, 4) // Max 4 concurrent
+
+results.forEach((result, i) => {
+  if (result.status === "fulfilled") {
+    console.log(`Context ${i} succeeded:`, result.value)
+  } else {
+    console.error(`Context ${i} failed:`, result.reason)
+  }
+})
+```
+
+**Use `pipe()` when:**
+
+- Processing multiple contexts in parallel
+- You want to control concurrency (default: 10)
+- You need all results (both successes and failures)
+- Error handling should be at the call site
+
+**Important: `pipe()` returns settled results**
+
+The `pipe()` method uses `Promise.allSettled()` internally and returns an array of settlement objects:
+
+- `{status: "fulfilled", value: <result>}` for successful executions
+- `{status: "rejected", reason: <error>}` for failed executions
+
+This design ensures error handling responsibility stays at the call site - you decide how to handle failures rather than the framework deciding for you.
 
 ## ActionHooks
 
