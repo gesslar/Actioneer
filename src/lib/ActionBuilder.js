@@ -250,7 +250,7 @@ export default class ActionBuilder {
     if(action && !action.tag) {
       action.tag = this.#tag
 
-      action.setup.call(action, this)
+      await Promise.resolve(action.setup.call(action, this))
     }
 
     // All children in a branch also get the same hooks.
