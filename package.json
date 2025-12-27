@@ -1,6 +1,6 @@
 {
   "name": "@gesslar/actioneer",
-  "version": "0.2.9",
+  "version": "0.4.0",
   "description": "Ready? Set?? ACTION!! pew! pew! pew!",
   "main": "./src/index.js",
   "type": "module",
@@ -56,6 +56,6 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@gesslar/toolkit": "^2.2.1"
+    "@gesslar/toolkit": "^2.7.1"
   }
 }

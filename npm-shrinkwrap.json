@@ -1,15 +1,15 @@
 {
   "name": "@gesslar/actioneer",
-  "version": "0.2.9",
+  "version": "0.4.0",
   "lockfileVersion": 3,
   "requires": true,
   "packages": {
     "": {
       "name": "@gesslar/actioneer",
-      "version": "0.2.9",
+      "version": "0.4.0",
       "license": "Unlicense",
       "dependencies": {
-        "@gesslar/toolkit": "^2.2.1"
+        "@gesslar/toolkit": "^2.7.1"
       },
       "devDependencies": {
         "@stylistic/eslint-plugin": "^5.6.1",
@@ -263,9 +263,9 @@
       }
     },
     "node_modules/@gesslar/toolkit": {
-      "version": "2.7.0",
-      "resolved": "https://registry.npmjs.org/@gesslar/toolkit/-/toolkit-2.7.0.tgz",
-      "integrity": "sha512-kG++G8ZdZR71sbpPxzvKFColPyRql2LWeOQ1Bd6rQwHzSRZ/YAXwtJjJmn+wS6F8HawW0en5hfmmA0X/8WgCxQ==",
+      "version": "2.7.1",
+      "resolved": "https://registry.npmjs.org/@gesslar/toolkit/-/toolkit-2.7.1.tgz",
+      "integrity": "sha512-h6oU7bYlhffxjMEN3tUmEfe7CHdiZG0QCRrnZ4SMHQCJl9IHR90WrctJABkvhx1DXe2K70X+Xu3RUW0FFLqZAA==",
       "license": "Unlicense",
       "dependencies": {
         "@gesslar/colours": "^0.0.1",
@@ -492,7 +492,6 @@
       "integrity": "sha512-hM5faZwg7aVNa819m/5r7D0h0c9yC4DUlWAOvHAtISdFTc8xB86VmX5Xqabrama3wIPJ/q9RbGS1worb6JfnMg==",
       "dev": true,
       "license": "MIT",
-      "peer": true,
       "dependencies": {
         "@typescript-eslint/scope-manager": "8.50.1",
         "@typescript-eslint/types": "8.50.1",
@@ -684,7 +683,6 @@
       "integrity": "sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg==",
       "dev": true,
       "license": "MIT",
-      "peer": true,
       "bin": {
         "acorn": "bin/acorn"
       },
@@ -904,7 +902,6 @@
       "integrity": "sha512-LEyamqS7W5HB3ujJyvi0HQK/dtVINZvd5mAAp9eT5S/ujByGjiZLCzPcHVzuXbpJDJF/cxwHlfceVUDZ2lnSTw==",
       "dev": true,
       "license": "MIT",
-      "peer": true,
       "dependencies": {
         "@eslint-community/eslint-utils": "^4.8.0",
         "@eslint-community/regexpp": "^4.12.1",
@@ -1997,7 +1994,6 @@
       "integrity": "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==",
       "dev": true,
       "license": "Apache-2.0",
-      "peer": true,
       "bin": {
         "tsc": "bin/tsc",
         "tsserver": "bin/tsserver"
