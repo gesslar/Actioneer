@@ -53,12 +53,14 @@ export default class ActionBuilder {
    * @param {ActionBuilderConfig} [config] Options
    */
   constructor(action?: ActionBuilderAction, { tag, debug }?: ActionBuilderConfig)
+  get tag(): symbol | null
   /**
    * Register an activity that the runner can execute.
    *
    * Overloads:
    * - do(name, op)
    * - do(name, kind, pred, opOrWrapper)
+   * - do(name, kind, splitter, rejoiner, opOrWrapper)
    *
    * @overload
    * @param {string|symbol} name Activity name
@@ -76,6 +78,16 @@ export default class ActionBuilder {
    */
   do(name: string | symbol, kind: number, pred: (context: unknown) => boolean | Promise<boolean>, op: ActionFunction | import('./ActionWrapper.js').default): ActionBuilder
   /**
+   * @overload
+   * @param {string|symbol} name Activity name
+   * @param {number} kind ACTIVITY.SPLIT flag.
+   * @param {(context: unknown) => unknown} splitter Splitter function for SPLIT mode.
+   * @param {(originalContext: unknown, splitResults: unknown) => unknown} rejoiner Rejoiner function for SPLIT mode.
+   * @param {ActionFunction|import("./ActionWrapper.js").default} op Operation or nested wrapper to execute.
+   * @returns {ActionBuilder}
+   */
+  do(name: string | symbol, kind: number, splitter: (context: unknown) => unknown, rejoiner: (originalContext: unknown, splitResults: unknown) => unknown, op: ActionFunction | import('./ActionWrapper.js').default): ActionBuilder
+  /**
    * Configure hooks to be loaded from a file when the action is built.
    *
    * @param {string} hooksFile Path to the hooks module file.
@@ -92,6 +104,14 @@ export default class ActionBuilder {
    * @throws {Sass} If hooks have already been configured with a different instance.
    */
   withHooks(hooks: import('./ActionHooks.js').default): ActionBuilder
+  /**
+   * Configure the action instance if not already set.
+   * Used to propagate parent action context to nested builders.
+   *
+   * @param {ActionBuilderAction} action The action instance to inherit.
+   * @returns {ActionBuilder} The builder instance for chaining.
+   */
+  withAction(action: ActionBuilderAction): ActionBuilder
   /**
    * Finalises the builder and returns a payload that can be consumed by the
    * runner.

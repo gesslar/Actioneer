@@ -22,10 +22,12 @@ export default class ActionRunner extends Piper {
   constructor(actionBuilder: import('./ActionBuilder.js').default | null, { debug }?: ActionRunnerOptions)
   /**
    * Executes the configured action pipeline.
+   * Builds the ActionWrapper on first run and caches it for subsequent calls.
+   * Supports WHILE, UNTIL, and SPLIT activity kinds.
    *
    * @param {unknown} context - Seed value passed to the first activity.
-   * @returns {Promise<unknown>} Final value produced by the pipeline, or null when a parallel stage reports failures.
-   * @throws {Sass} When no activities are registered or required parallel builders are missing.
+   * @returns {Promise<unknown>} Final value produced by the pipeline.
+   * @throws {Sass} When no activities are registered, conflicting activity kinds are used, or execution fails.
    */
   run(context: unknown): Promise<unknown>
   #private

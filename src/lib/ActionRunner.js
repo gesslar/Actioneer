@@ -129,8 +129,9 @@ export default class ActionRunner extends Piper {
             let settled
 
             if(activity.opKind === "ActionBuilder") {
-              // Use parallel execution for ActionBuilder with concurrency control
-              // pipe() now returns settled results
+              if(activity.action)
+                activity.op.withAction(activity.action)
+
               if(activity.hooks)
                 activity.op.withHooks(activity.hooks)
 
@@ -188,6 +189,9 @@ export default class ActionRunner extends Piper {
     const opKind = activity.opKind
 
     if(opKind === "ActionBuilder") {
+      if(activity.action)
+        activity.op.withAction(activity.action)
+
       if(activity.hooks)
         activity.op.withHooks(activity.hooks)
 
@@ -205,6 +209,9 @@ export default class ActionRunner extends Piper {
         const result = await activity.run(context)
 
         if(Data.isType(result, "ActionBuilder")) {
+          if(activity.action)
+            result.withAction(activity.action)
+
           if(activity.hooks)
             result.withHooks(activity.hooks)
 

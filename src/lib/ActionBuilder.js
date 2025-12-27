@@ -226,6 +226,27 @@ export default class ActionBuilder {
   }
 
   /**
+   * Configure the action instance if not already set.
+   * Used to propagate parent action context to nested builders.
+   *
+   * @param {ActionBuilderAction} action The action instance to inherit.
+   * @returns {ActionBuilder} The builder instance for chaining.
+   */
+  withAction(action) {
+    if(!this.#action && action) {
+      this.#action = action
+
+      // Update all existing activity definitions that don't have an action
+      for(const [, def] of this.#activities) {
+        if(!def.action)
+          def.action = action
+      }
+    }
+
+    return this
+  }
+
+  /**
    * Validates that an activity name has not been reused.
    *
    * @private

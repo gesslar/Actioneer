@@ -154,7 +154,7 @@ export default class Activity {
     await this.#hooks?.callHook("before", this.#name, context)
 
     // not a hook
-    const result = await this.#op.call(this.#action,context)
+    const result = await this.#op.call(this.#action, context)
 
     // after hook
     await this.#hooks?.callHook("after", this.#name, context)

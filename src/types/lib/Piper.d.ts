@@ -40,9 +40,13 @@ export default class Piper {
    *
    * @param {Array<unknown>|unknown} items - Items to process
    * @param {number} maxConcurrent - Maximum concurrent items to process
-   * @returns {Promise<Array<unknown>>} - Collected results from steps
+   * @returns {Promise<Array<{status: string, value?: unknown, reason?: unknown}>>} - Settled results from processing
    */
-  pipe(items: Array<unknown> | unknown, maxConcurrent?: number): Promise<Array<unknown>>
+  pipe(items: Array<unknown> | unknown, maxConcurrent?: number): Promise<Array<{
+    status: string;
+    value?: unknown;
+    reason?: unknown;
+  }>>
   #private
 }
 //# sourceMappingURL=Piper.d.ts.map
