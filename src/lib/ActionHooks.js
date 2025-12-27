@@ -1,5 +1,5 @@
 import {setTimeout as timeout} from "timers/promises"
-import {Data, FileObject, Sass, Util, Valid} from "@gesslar/toolkit"
+import {Data, FileObject, Sass, Promised, Util, Valid} from "@gesslar/toolkit"
 
 /**
  * @typedef {(message: string, level?: number, ...args: Array<unknown>) => void} DebugFn
@@ -203,7 +203,7 @@ export default class ActionHooks {
 
       try {
         debug("Starting Promise race for hook: %o", 4, hookName)
-        await Util.race([
+        await Promised.race([
           hookFunction(),
           expireAsync
         ])
