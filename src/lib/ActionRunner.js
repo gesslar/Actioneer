@@ -1,4 +1,4 @@
-import {Data, Sass, Util, Valid} from "@gesslar/toolkit"
+import {Promised, Data, Sass, Valid} from "@gesslar/toolkit"
 
 import ActionBuilder from "./ActionBuilder.js"
 import {ACTIVITY} from "./Activity.js"
@@ -143,7 +143,7 @@ export default class ActionRunner extends Piper {
               settled = await runner.pipe(splitContexts)
             } else {
               // For plain functions, process each split context
-              settled = await Util.settleAll(
+              settled = await Promised.settle(
                 splitContexts.map(ctx => this.#execute(activity, ctx))
               )
             }

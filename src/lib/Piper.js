@@ -9,7 +9,7 @@
  * - Error handling and reporting
  */
 
-import {Sass, Tantrum, Util} from "@gesslar/toolkit"
+import {Promised, Sass, Tantrum} from "@gesslar/toolkit"
 
 export default class Piper {
   #debug
@@ -108,7 +108,7 @@ export default class Piper {
       }
     }
 
-    const setupResult = await Util.settleAll(
+    const setupResult = await Promised.settle(
       [...this.#lifeCycle.get("setup")].map(e => e())
     )
 
@@ -126,7 +126,7 @@ export default class Piper {
       await Promise.all(workers)
     } finally {
       // Run cleanup hooks
-      const teardownResult = await Util.settleAll(
+      const teardownResult = await Promised.settle(
         [...this.#lifeCycle.get("teardown")].map(e => e())
       )
 
