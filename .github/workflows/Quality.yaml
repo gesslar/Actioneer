@@ -56,6 +56,7 @@ jobs:
       pm_install_cmd: ${{ steps.cfg2.outputs.pm_install_cmd }}
       pm_default: ${{ steps.cfg1.outputs.pm_default }}
       pm_version: ${{ steps.cfg2.outputs.pm_version }}
+      node_version: ${{ steps.cfg2.outputs.node_version }}
 
     steps:
       - name: Configure Linting and Testing
@@ -73,20 +74,23 @@ jobs:
           echo "pm_default=npm" >> "$GITHUB_OUTPUT"
 
       - name: Check out repository
-        if: ${{ steps.cfg1.outputs.package_manager == 'auto' }}
         uses: actions/checkout@v6
 
       - name: Configure Package Manager
         id: cfg2
         run: |+
+          set -euo pipefail
+
           PM_DEFAULT="${{ steps.cfg1.outputs.pm_default }}"
           PACKAGE_MANAGER="${{ steps.cfg1.outputs.package_manager }}"
+          PM_VERSION=""
+          NODE_VERSION=""
 
           if [[ "$PACKAGE_MANAGER" = "auto" ]]; then
             printf "Package manager set to 'auto'.\n"
             printf "Detecting: "
 
-            PM=$(jq -r .packageManager package.json 2>/dev/null)
+            PM=$(jq -er .packageManager package.json)
             printf "PM=%s\n" "$PM"
 
             if [[ ! "$PM" ]]; then
@@ -100,8 +104,23 @@ jobs:
             fi
           fi
 
+          if ! NODE_RAW=$(jq -er '.engines.node' package.json); then
+            echo "::error::engines.node is required in package.json."
+            exit 1
+          fi
+
+          if [[ $NODE_RAW =~ ([0-9]+)(\.[0-9]+)?(\.[0-9]+)? ]]; then
+            NODE_VERSION="${BASH_REMATCH[1]}"
+            [[ -n "${BASH_REMATCH[2]}" ]] && NODE_VERSION+="${BASH_REMATCH[2]}"
+            [[ -n "${BASH_REMATCH[3]}" ]] && NODE_VERSION+="${BASH_REMATCH[3]}"
+          else
+            echo "::error::Unable to parse engines.node ('${NODE_RAW}') for a Node.js version."
+            exit 1
+          fi
+
           echo "package_manager=${PACKAGE_MANAGER}" >> "$GITHUB_OUTPUT"
           echo "pm_version=${PM_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "node_version=${NODE_VERSION}" >> "$GITHUB_OUTPUT"
 
           if [[ "$PACKAGE_MANAGER" = "pnpm" ]]; then
             echo "pm_install_cmd=pnpm install --frozen-lockfile" >> "$GITHUB_OUTPUT"
@@ -122,6 +141,7 @@ jobs:
           fi
 
           printf "Package Manager Install: %s\n" "${{ steps.cfg2.outputs.pm_install_cmd }}"
+          printf "Node: %s\n" "${{ steps.cfg2.outputs.node_version }}"
 
   Lint:
     needs: ConfigureWorkflow
@@ -129,10 +149,6 @@ jobs:
 
     permissions:
       contents: read
-
-    strategy:
-      matrix:
-        node-version: [22.x, 24.x, 25.x]
 
     steps:
       - name: Check out repository
@@ -147,11 +163,11 @@ jobs:
         with:
           version: ${{ needs.ConfigureWorkflow.outputs.pm_version }}
 
-      - name: Using Node v${{ matrix.node-version }}
+      - name: Using Node v${{ needs.ConfigureWorkflow.outputs.node_version }}
         if: ${{ needs.ConfigureWorkflow.outputs.perform_linting == 'yes' }}
         uses: actions/setup-node@v6
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: ${{ needs.ConfigureWorkflow.outputs.node_version }}
           cache: ${{ needs.ConfigureWorkflow.outputs.package_manager }}
 
       - name: Install dependencies
@@ -171,7 +187,10 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [22.x, 24.x, 25.x]
+        node-version:
+          - ${{ needs.ConfigureWorkflow.outputs.node_version }}
+          - 24.x
+          - 25.x
 
     steps:
       - name: Check out repository
