@@ -263,6 +263,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >
+          set -x;
           gh release create "${{ env.NEW_TAG }}"
           --title "Release ${{ env.NEW_TAG }}"
           --generate-notes
