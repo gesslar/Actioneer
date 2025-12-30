@@ -21,6 +21,22 @@ jobs:
   #   Example:  QUALITY_CHECK="CodeQL, Linting, Testing"
   #             QUALITY_CHECK=""
   #
+  ### PACKAGE MANAGER
+  #
+  #   Set the package manager to use: "auto", "npm" or "pnpm
+  #   This will configure the appropriate setup and commands throughout
+  #   the workflow.
+  #
+  #   If set to "auto", this workflow will attempt to read the "packageManager"
+  #   value of the package.json. So, make sure you have one and that you have
+  #   also set this value. If it discovers pnpm, it will use that and falls
+  #   back to npm if missing.
+  #
+  #   Example:
+  #             PACKAGE_MANAGER="auto"
+  #             PACKAGE_MANAGER="pnpm"
+  #             PACKAGE_MANAGER="npm"
+  #
   ### GIT CONFIGURATION
   #
   #   Configure the Git user for tagging operations.
@@ -48,6 +64,7 @@ jobs:
         run: |+
           #############################################################
           QUALITY_CHECK="CodeQL, Linting, Testing"
+          PACKAGE_MANAGER="auto"
           GIT_USER_NAME="github-actions"
           GIT_USER_EMAIL="github-actions@github.com"
           #############################################################
