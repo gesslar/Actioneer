@@ -53,11 +53,11 @@ jobs:
       quality_check: ${{ steps.cfg_main.outputs.quality_check }}
       git_user_name: ${{ steps.cfg_main.outputs.git_user_name }}
       git_user_email: ${{ steps.cfg_main.outputs.git_user_email }}
-      package_manager: ${{ steps.cfg2.outputs.package_manager }}
-      pm_install_cmd: ${{ steps.cfg2.outputs.pm_install_cmd }}
-      pm_default: ${{ steps.cfg1.outputs.pm_default }}
-      pm_version: ${{ steps.cfg2.outputs.pm_version }}
-      node_version: ${{ steps.cfg2.outputs.node_version }}
+      package_manager: ${{ steps.cfg_pm.outputs.package_manager }}
+      pm_install_cmd: ${{ steps.cfg_pm.outputs.pm_install_cmd }}
+      pm_default: ${{ steps.cfg_main.outputs.pm_default }}
+      pm_version: ${{ steps.cfg_pm.outputs.pm_version }}
+      node_version: ${{ steps.cfg_node.outputs.node_version }}
 
     steps:
       - name: Configure workflow
@@ -139,8 +139,6 @@ jobs:
 
       - name: Display Configuration
         run: |+
-          printf "Linting: %s\n" "${{ steps.cfg_main.outputs.perform_linting }}"
-          printf "Testing: %s\n" "${{ steps.cfg_main.outputs.perform_testing }}"
           printf "Package Manager: %s" "${{ steps.cfg_pm.outputs.package_manager }}"
 
           if [[ "${{ steps.cfg_pm.outputs.package_manager }}" = "pnpm" ]]; then
