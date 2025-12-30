@@ -54,7 +54,7 @@
     "@gesslar/toolkit": "^3.4.0"
   },
   "devDependencies": {
-    "@gesslar/uglier": "^0.0.9",
+    "@gesslar/uglier": "^0.3.0",
     "eslint": "^9.39.2",
     "typescript": "^5.9.3"
   }
