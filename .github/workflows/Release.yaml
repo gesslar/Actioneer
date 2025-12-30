@@ -137,6 +137,21 @@ jobs:
 
           echo "node_version=${NODE_VERSION}" >> "$GITHUB_OUTPUT"
 
+      - name: Display Configuration
+        run: |+
+          printf "Linting: %s\n" "${{ steps.cfg_main.outputs.perform_linting }}"
+          printf "Testing: %s\n" "${{ steps.cfg_main.outputs.perform_testing }}"
+          printf "Package Manager: %s" "${{ steps.cfg_pm.outputs.package_manager }}"
+
+          if [[ "${{ steps.cfg_pm.outputs.package_manager }}" = "pnpm" ]]; then
+            printf " (%s)\n" "${{ steps.cfg_pm.outputs.pm_version }}"
+          else
+            printf "\n"
+          fi
+
+          printf "Package Manager Install: %s\n" "${{ steps.cfg_pm.outputs.pm_install_cmd }}"
+          printf "Node: %s\n" "${{ steps.cfg_node.outputs.node_version }}"
+
   WaitForQuality:
     needs: ConfigureWorkflow
     runs-on: ubuntu-latest
