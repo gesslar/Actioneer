@@ -53,7 +53,6 @@
   "devDependencies": {
     "@gesslar/uglier": "^0.0.8",
     "eslint": "^9.39.2",
-    "eslint-plugin-jsdoc": "^61.5.0",
     "typescript": "^5.9.3"
   }
 }
