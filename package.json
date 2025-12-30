@@ -30,7 +30,6 @@
   },
   "files": [
     "src/",
-    "README.md",
     "UNLICENSE.txt"
   ],
   "sideEffects": false,
@@ -48,7 +47,7 @@
     "pr": "gt submit -p --ai"
   },
   "dependencies": {
-    "@gesslar/toolkit": "^3.2.0"
+    "@gesslar/toolkit": "^3.3.0"
   },
   "devDependencies": {
     "@gesslar/uglier": "^0.0.9",
