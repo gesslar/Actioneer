@@ -48,7 +48,7 @@
     "pr": "gt submit --publish --restack --ai"
   },
   "dependencies": {
-    "@gesslar/toolkit": "^3.0.1"
+    "@gesslar/toolkit": "^3.0.2"
   },
   "devDependencies": {
     "@gesslar/uglier": "^0.0.9",
