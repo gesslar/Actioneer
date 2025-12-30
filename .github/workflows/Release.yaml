@@ -37,6 +37,10 @@ jobs:
       quality_check: ${{ steps.cfg.outputs.quality_check }}
       git_user_name: ${{ steps.cfg.outputs.git_user_name }}
       git_user_email: ${{ steps.cfg.outputs.git_user_email }}
+      package_manager: ${{ steps.pm.outputs.package_manager }}
+      pm_install_cmd: ${{ steps.pm.outputs.pm_install_cmd }}
+      pm_version: ${{ steps.pm.outputs.pm_version }}
+      node_version: ${{ steps.pm.outputs.node_version }}
 
     steps:
       - name: Configure workflow
@@ -52,6 +56,52 @@ jobs:
           echo "quality_check=${QUALITY_CHECK}" >> "$GITHUB_OUTPUT"
           echo "git_user_name=${GIT_USER_NAME}" >> "$GITHUB_OUTPUT"
           echo "git_user_email=${GIT_USER_EMAIL}" >> "$GITHUB_OUTPUT"
+
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Detect package manager
+        id: pm
+        run: |+
+          set -euo pipefail
+
+          if ! PM_RAW=$(jq -er .packageManager package.json); then
+            echo "::error::packageManager is required in package.json."
+            exit 1
+          fi
+
+          if [[ $PM_RAW =~ ^(npm|pnpm)@([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            PACKAGE_MANAGER="${BASH_REMATCH[1]}"
+            PM_VERSION="${BASH_REMATCH[2]}"
+          else
+            echo "::error::packageManager missing or invalid in package.json (expected <npm|pnpm>@<version>). Found '${PM_RAW}'."
+            exit 1
+          fi
+
+          if ! NODE_RAW=$(jq -er '.engines.node' package.json); then
+            echo "::error::engines.node is required in package.json."
+            exit 1
+          fi
+
+          if [[ $NODE_RAW =~ ([0-9]+)(\.[0-9]+)?(\.[0-9]+)? ]]; then
+            NODE_VERSION="${BASH_REMATCH[1]}"
+            [[ -n "${BASH_REMATCH[2]}" ]] && NODE_VERSION+="${BASH_REMATCH[2]}"
+            [[ -n "${BASH_REMATCH[3]}" ]] && NODE_VERSION+="${BASH_REMATCH[3]}"
+          else
+            echo "::error::Unable to parse engines.node ('${NODE_RAW}') for a Node.js version."
+            exit 1
+          fi
+
+          if [[ "$PACKAGE_MANAGER" = "pnpm" ]]; then
+            PM_INSTALL_CMD="pnpm install --frozen-lockfile"
+          else
+            PM_INSTALL_CMD="npm ci"
+          fi
+
+          echo "package_manager=${PACKAGE_MANAGER}" >> "$GITHUB_OUTPUT"
+          echo "pm_install_cmd=${PM_INSTALL_CMD}" >> "$GITHUB_OUTPUT"
+          echo "pm_version=${PM_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "node_version=${NODE_VERSION}" >> "$GITHUB_OUTPUT"
 
   WaitForQuality:
     needs: ConfigureWorkflow
@@ -104,7 +154,7 @@ jobs:
           fi
 
   CreateTag:
-    needs: DetermineVersion
+    needs: [ConfigureWorkflow, DetermineVersion]
     if: ${{ needs.DetermineVersion.outputs.version != '🙅🏻‍♂️' }}
     runs-on: ubuntu-latest
 
@@ -118,6 +168,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Install pnpm
+        if: ${{ needs.ConfigureWorkflow.outputs.package_manager == 'pnpm' }}
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ needs.ConfigureWorkflow.outputs.pm_version }}
+
       - name: Setup Git Variables
         run: |+
           git config user.name "${{ needs.ConfigureWorkflow.outputs.git_user_name }}"
@@ -126,10 +182,11 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: ${{ needs.ConfigureWorkflow.outputs.node_version }}
+          cache: ${{ needs.ConfigureWorkflow.outputs.package_manager }}
 
       - name: Install dependencies
-        run: npm install
+        run: ${{ needs.ConfigureWorkflow.outputs.pm_install_cmd }}
 
       - name: Read version from package.json
         id: get_version
@@ -177,6 +234,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Install pnpm
+        if: ${{ needs.ConfigureWorkflow.outputs.package_manager == 'pnpm' }}
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ needs.ConfigureWorkflow.outputs.pm_version }}
+
       - name: Setup Git Variables
         run: |
           git config user.name "${{ needs.ConfigureWorkflow.outputs.git_user_name }}"
@@ -185,14 +248,15 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: ${{ needs.ConfigureWorkflow.outputs.node_version }}
+          cache: ${{ needs.ConfigureWorkflow.outputs.package_manager }}
 
       - name: Install dependencies
-        run: npm install
+        run: ${{ needs.ConfigureWorkflow.outputs.pm_install_cmd }}
 
       - name: Build artefact
         run: |
-          ARTEFACT=$(npm pack 2>/dev/null | tail -1)
+          ARTEFACT=$({{ needs.ConfigureWorkflow.outputs.package_manager }} pack 2>/dev/null | tail -1)
           echo "ARTEFACT=${ARTEFACT}" >> $GITHUB_ENV
 
       - name: Create Release
@@ -205,7 +269,7 @@ jobs:
           "${{ env.ARTEFACT }}"
 
   PublishToNPM:
-    needs: DetermineVersion
+    needs: [ConfigureWorkflow, DetermineVersion]
     if: ${{ github.event.pull_request.merged == true && needs.DetermineVersion.outputs.version != '🙅🏻‍♂️' }}
     runs-on: ubuntu-latest
 
@@ -218,11 +282,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Install pnpm
+        if: ${{ needs.ConfigureWorkflow.outputs.package_manager == 'pnpm' }}
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ needs.ConfigureWorkflow.outputs.pm_version }}
+
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: ${{ needs.ConfigureWorkflow.outputs.node_version }}
+          cache: ${{ needs.ConfigureWorkflow.outputs.package_manager }}
 
       - name: Ship it
         run: |
-          npm publish --access public --//registry.npmjs.org/:_authToken=${TOKEN}
+          ${{ needs.ConfigureWorkflow.outputs.package_manager }} publish --access public --//registry.npmjs.org/:_authToken=${TOKEN}
