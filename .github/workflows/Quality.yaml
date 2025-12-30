@@ -188,7 +188,8 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - ${{ needs.ConfigureWorkflow.outputs.node_version }}
+          - 22.x
+          - 23.x
           - 24.x
           - 25.x
 
