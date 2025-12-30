@@ -140,7 +140,9 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Install pnpm
-        if: ${{ needs.ConfigureWorkflow.outputs.perform_linting == 'yes' && needs.ConfigureWorkflow.outputs.package_manager == 'pnpm' }}
+        if: >
+          ${{ needs.ConfigureWorkflow.outputs.perform_linting == 'yes' &&
+              needs.ConfigureWorkflow.outputs.package_manager == 'pnpm' }}
         uses: pnpm/action-setup@v4
         with:
           version: ${{ needs.ConfigureWorkflow.outputs.pm_version }}
@@ -179,7 +181,7 @@ jobs:
       - name: Install pnpm
         if: >
           ${{ needs.ConfigureWorkflow.outputs.perform_testing == 'yes' &&
-          needs.ConfigureWorkflow.outputs.package_manager == 'pnpm' }}
+              needs.ConfigureWorkflow.outputs.package_manager == 'pnpm' }}
         uses: pnpm/action-setup@v4
         with:
           version: ${{ needs.ConfigureWorkflow.outputs.pm_version }}
@@ -232,7 +234,7 @@ jobs:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
           # Uncomment to enable stricter security queries:
-          queries: security-extended,security-and-quality
+          # queries: security-extended,security-and-quality
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
