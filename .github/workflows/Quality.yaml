@@ -1,4 +1,4 @@
-name: CodeQL, Linting, Testing
+name: Quality
 
 on:
   workflow_dispatch:
