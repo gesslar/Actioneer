@@ -65,18 +65,29 @@ jobs:
         run: |+
           set -euo pipefail
 
-          if ! PM_RAW=$(jq -er .packageManager package.json); then
-            echo "::error::packageManager is required in package.json."
-            exit 1
+          PM_DEFAULT="npm"
+          PACKAGE_MANAGER="${PM_DEFAULT}"
+          PM_VERSION=""
+
+          if [[ "$PACKAGE_MANAGER" = "auto" ]]; then
+            printf "Package manager set to 'auto'.\n"
+            printf "Detecting: "
+
+            PM=$(jq -er .packageManager package.json)
+            printf "PM=%s\n" "$PM"
+
+            if [[ ! "$PM" ]]; then
+              PACKAGE_MANAGER="$PM_DEFAULT"
+            elif [[ "$PM" =~ ^(pnpm)@([[:digit:]]+.[[:digit:]]+.[[:digit:]]+)$ ]]; then
+              PACKAGE_MANAGER="${BASH_REMATCH[1]}"
+              PM_VERSION="${BASH_REMATCH[2]}"
+            else
+              PACKAGE_MANAGER="$PM_DEFAULT"
+              PM_VERSION=""
+            fi
           fi
 
-          if [[ $PM_RAW =~ ^(npm|pnpm)@([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
-            PACKAGE_MANAGER="${BASH_REMATCH[1]}"
-            PM_VERSION="${BASH_REMATCH[2]}"
-          else
-            echo "::error::packageManager missing or invalid in package.json (expected <npm|pnpm>@<version>). Found '${PM_RAW}'."
-            exit 1
-          fi
+          echo "Using package manager: ${PACKAGE_MANAGER}${PM_VERSION:+@${PM_VERSION}}"
 
           if ! NODE_RAW=$(jq -er '.engines.node' package.json); then
             echo "::error::engines.node is required in package.json."
