@@ -256,7 +256,7 @@ jobs:
 
       - name: Build artefact
         run: |
-          ARTEFACT=$({{ needs.ConfigureWorkflow.outputs.package_manager }} pack 2>/dev/null | tail -1)
+          ARTEFACT=$({{ needs.ConfigureWorkflow.outputs.package_manager }} pack | tail -1)
           echo "ARTEFACT=${ARTEFACT}" >> $GITHUB_ENV
 
       - name: Create Release
