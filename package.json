@@ -45,10 +45,10 @@
     "update": "pnpm up -L",
     "test": "node --test tests/unit/*.test.js",
     "test:unit": "node --test tests/unit/*.test.js",
-    "pr": "gt submit --publish --restack --ai"
+    "pr": "gt submit -p --ai"
   },
   "dependencies": {
-    "@gesslar/toolkit": "^3.1.0"
+    "@gesslar/toolkit": "^3.2.0"
   },
   "devDependencies": {
     "@gesslar/uglier": "^0.0.9",

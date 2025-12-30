@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@gesslar/toolkit':
-        specifier: ^3.1.0
-        version: 3.1.0
+        specifier: ^3.2.0
+        version: 3.2.0
     devDependencies:
       '@gesslar/uglier':
         specifier: ^0.0.9
@@ -74,8 +74,8 @@ packages:
     resolution: {integrity: sha512-dnRe/Rmjeva0SYrbjIt30THm3FQ6vsCNGYhMiHjagzTUHsIfmVgyKclRAhcoJem47PLvrC2D7VyzaUMl6OiBcQ==}
     hasBin: true
 
-  '@gesslar/toolkit@3.1.0':
-    resolution: {integrity: sha512-kw8qYDoZWqDk4/Odvn7laRtF8q4Xw/Xco4Ozw49am06EiWRPQW6G+6M4SfazKPq8/jfEA/BaCVQE11x1QNQfEQ==}
+  '@gesslar/toolkit@3.2.0':
+    resolution: {integrity: sha512-TCAISE2hfmlQ/DxJoMcuWIEeAgmrWhj1cifR+lgFWMzBY8GKXfRkXMe+PRHccJFS97KpCfxchNZ2NhP1VIE1BA==}
     engines: {node: '>=22'}
 
   '@gesslar/uglier@0.0.9':
@@ -626,7 +626,7 @@ snapshots:
 
   '@gesslar/colours@0.0.1': {}
 
-  '@gesslar/toolkit@3.1.0':
+  '@gesslar/toolkit@3.2.0':
     dependencies:
       '@gesslar/colours': 0.0.1
       ajv: 8.17.1
@@ -637,7 +637,7 @@ snapshots:
   '@gesslar/uglier@0.0.9(eslint@9.39.2)':
     dependencies:
       '@gesslar/colours': 0.0.1
-      '@gesslar/toolkit': 3.1.0
+      '@gesslar/toolkit': 3.2.0
       '@stylistic/eslint-plugin': 5.6.1(eslint@9.39.2)
       eslint: 9.39.2
       eslint-plugin-jsdoc: 61.5.0(eslint@9.39.2)
