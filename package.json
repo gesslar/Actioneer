@@ -48,7 +48,7 @@
   "homepage": "https://github.com/gesslar/toolkit#readme",
   "packageManager": "pnpm@10.26.2",
   "dependencies": {
-    "@gesslar/toolkit": "^2.8.0"
+    "@gesslar/toolkit": "^3.0.1"
   },
   "devDependencies": {
     "eslint-plugin-jsdoc": "^61.5.0",

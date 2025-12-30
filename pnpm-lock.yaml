@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@gesslar/toolkit':
-        specifier: ^2.8.0
-        version: 2.8.0
+        specifier: ^3.0.1
+        version: 3.0.1
     devDependencies:
       '@gesslar/uglier':
         specifier: ^0.0.8
@@ -81,8 +81,8 @@ packages:
     resolution: {integrity: sha512-/S9Z6uDyL50PJ13UWxFjYihS5+77YK5VV3ndThUQuCxgoPs2FCEQylP3Qvj0ZDVqfyShZyxU29QqRer4O6sb1Q==}
     engines: {node: '>=20'}
 
-  '@gesslar/toolkit@2.8.0':
-    resolution: {integrity: sha512-196mRaTRN75MRo2HiejFXZCuQYbhkIueM3DfDSPBsSkJz6jygvuuXk1nz/XyutEFh9eLt1OawXDiYOXx6cm+DA==}
+  '@gesslar/toolkit@3.0.1':
+    resolution: {integrity: sha512-wruLlMUPUG6cNBM4Va2LR7PhBx7cgtWeKjVi+TikptPmkob+Ud+UbKH2WQU6YB0ns+U0vM8p1k/0ItrWcZ7v1A==}
     engines: {node: '>=22'}
 
   '@gesslar/uglier@0.0.8':
@@ -641,7 +641,7 @@ snapshots:
       json5: 2.2.3
       yaml: 2.8.2
 
-  '@gesslar/toolkit@2.8.0':
+  '@gesslar/toolkit@3.0.1':
     dependencies:
       '@gesslar/colours': 0.0.1
       ajv: 8.17.1
