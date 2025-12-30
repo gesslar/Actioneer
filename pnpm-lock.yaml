@@ -18,9 +18,6 @@ importers:
       eslint:
         specifier: ^9.39.2
         version: 9.39.2
-      eslint-plugin-jsdoc:
-        specifier: ^61.5.0
-        version: 61.5.0(eslint@9.39.2)
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
