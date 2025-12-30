@@ -64,7 +64,7 @@ jobs:
           #############################################################
           PACKAGE_MANAGER="auto"
           PERFORM_LINTING="yes"
-          PERFORM_TESTING="no"
+          PERFORM_TESTING="yes"
           #############################################################
 
           echo "perform_linting=${PERFORM_LINTING}" >> "$GITHUB_OUTPUT"
