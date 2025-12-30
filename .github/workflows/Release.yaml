@@ -1,0 +1,228 @@
+name: Release
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
+
+jobs:
+  ### CONFIGURATION ###################################################
+  #
+  ### QUALITY CHECK WORKFLOW
+  #
+  #   If you want to wait for a quality workflow to complete before
+  #   creating a release, specify its name here. Leave empty to skip.
+  #
+  #   Example:  QUALITY_CHECK="CodeQL, Linting, Testing"
+  #             QUALITY_CHECK=""
+  #
+  ### GIT CONFIGURATION
+  #
+  #   Configure the Git user for tagging operations.
+  #
+  #   Example:  GIT_USER_NAME="github-actions"
+  #             GIT_USER_EMAIL="github-actions@github.com"
+  #
+  #####################################################################
+
+  ConfigureWorkflow:
+    runs-on: ubuntu-latest
+
+    outputs:
+      quality_check: ${{ steps.cfg.outputs.quality_check }}
+      git_user_name: ${{ steps.cfg.outputs.git_user_name }}
+      git_user_email: ${{ steps.cfg.outputs.git_user_email }}
+
+    steps:
+      - name: Configure workflow
+        id: cfg
+        run: |+
+          #############################################################
+          QUALITY_CHECK="CodeQL, Linting, Testing"
+          GIT_USER_NAME="github-actions"
+          GIT_USER_EMAIL="github-actions@github.com"
+          #############################################################
+
+          # Apply configuration
+          echo "quality_check=${QUALITY_CHECK}" >> "$GITHUB_OUTPUT"
+          echo "git_user_name=${GIT_USER_NAME}" >> "$GITHUB_OUTPUT"
+          echo "git_user_email=${GIT_USER_EMAIL}" >> "$GITHUB_OUTPUT"
+
+  WaitForQuality:
+    needs: ConfigureWorkflow
+    runs-on: ubuntu-latest
+    if: ${{ github.event.pull_request.merged == true }}
+
+    steps:
+      - name: Wait for Quality workflow to complete
+        if: ${{ needs.ConfigureWorkflow.outputs.quality_check != '' }}
+        uses: lewagon/wait-on-check-action@v1.3.4
+        with:
+          ref: ${{ github.ref }}
+          running-workflow-name: ${{ needs.ConfigureWorkflow.outputs.quality_check }}
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+
+      - name: Skipping wait (no quality_check configured)
+        if: ${{ needs.ConfigureWorkflow.outputs.quality_check == '' }}
+        run: echo "No quality check configured; continuing."
+
+  DetermineVersion:
+    needs: WaitForQuality
+    runs-on: ubuntu-latest
+    if: ${{ github.event.pull_request.merged == true }}
+
+    outputs:
+      version: ${{ steps.version.outputs.VERSION }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version
+        id: check_version
+        uses: gesslar/new-version-questionmark@v1.5.5
+        with:
+          source: package.json
+          version_pattern: "^v\\d+\\.\\d+\\.\\d+$"
+
+      - name: Show result
+        id: version
+        run: |+
+          UPDATED_VERSION="${{ steps.check_version.outputs.updated_version }}"
+
+          if [[ "$UPDATED_VERSION" == "no changes" ]]; then
+            echo "VERSION=🙅🏻‍♂️" >>  "$GITHUB_OUTPUT"
+          else
+            echo "VERSION=${UPDATED_VERSION}" >> "$GITHUB_OUTPUT"
+          fi
+
+  CreateTag:
+    needs: DetermineVersion
+    if: ${{ needs.DetermineVersion.outputs.version != '🙅🏻‍♂️' }}
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    outputs:
+      new_tag: ${{ steps.check_tag.outputs.new_tag }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Git Variables
+        run: |+
+          git config user.name "${{ needs.ConfigureWorkflow.outputs.git_user_name }}"
+          git config user.email "${{ needs.ConfigureWorkflow.outputs.git_user_email }}"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Read version from package.json
+        id: get_version
+        run: |
+          CURRENT_VERSION=${{ needs.DetermineVersion.outputs.version }}
+
+      - name: Fetch all tags
+        run: git fetch --tags
+
+      - name: Check for existing tag and create if it does not exist
+        id: check_tag
+        run: |+
+          CURRENT_VERSION="${{ needs.DetermineVersion.outputs.version }}"
+          TAG_EXISTS=$(git tag -l "v${CURRENT_VERSION}")
+
+          echo "Value of TAG_EXISTS: $TAG_EXISTS"
+
+          if [ -z "$TAG_EXISTS" ]; then
+            echo "Tag does not exist for version v${CURRENT_VERSION}. Creating tag."
+            git tag "v${CURRENT_VERSION}"
+            git push origin "v${CURRENT_VERSION}"
+            echo "new_tag=v${CURRENT_VERSION}" >> $GITHUB_OUTPUT
+          else
+            echo "Tag already exists for version v${CURRENT_VERSION}. Skipping tag creation."
+            echo "new_tag=🙅🏻‍♂️" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+  PrepareGitHubRelease:
+    needs: [ConfigureWorkflow, CreateTag]
+    runs-on: ubuntu-latest
+    if: ${{ needs.CreateTag.outputs.new_tag != '🙅🏻‍♂️' }}
+
+    permissions:
+      contents: write
+
+    env:
+      NEW_TAG: ${{ needs.CreateTag.outputs.new_tag }}
+
+    steps:
+      - name: Setup New Tag
+        run: |
+          echo "NEW_TAG=${NEW_TAG}" >> $GITHUB_ENV
+
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Git Variables
+        run: |
+          git config user.name "${{ needs.ConfigureWorkflow.outputs.git_user_name }}"
+          git config user.email "${{ needs.ConfigureWorkflow.outputs.git_user_email }}"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build artefact
+        run: |
+          ARTEFACT=$(npm pack 2>/dev/null | tail -1)
+          echo "ARTEFACT=${ARTEFACT}" >> $GITHUB_ENV
+
+      - name: Create Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >
+          gh release create "${{ env.NEW_TAG }}"
+          --title "Release ${{ env.NEW_TAG }}"
+          --generate-notes
+          "${{ env.ARTEFACT }}"
+
+  PublishToNPM:
+    needs: DetermineVersion
+    if: ${{ github.event.pull_request.merged == true && needs.DetermineVersion.outputs.version != '🙅🏻‍♂️' }}
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+    env:
+      TOKEN: ${{ secrets.NPM_GITHUB_CD_ACCESS_TOKEN }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Ship it
+        run: |
+          npm publish --access public --//registry.npmjs.org/:_authToken=${TOKEN}
