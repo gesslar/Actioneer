@@ -16,7 +16,7 @@ jobs:
   ### QUALITY CHECK WORKFLOW
   #
   #   If you want to wait for a quality workflow to complete before
-  #   creating a release, specify its name here. Leave empty to skip.
+  #   creating a release, specify its name. Leave empty to skip.
   #
   #   Example:  QUALITY_CHECK="CodeQL, Linting, Testing"
   #             QUALITY_CHECK=""
