@@ -11,8 +11,8 @@
     "rootDir": "./src",
     "skipLibCheck": true,
     "strict": true,
-    "target": "es2022",
-    "types": ["node"]
+    "target": "es2022"
   },
-  "include": ["./src/index.js", "./src/lib/**/*.js"]
+  "include": ["./src/**/*.js"],
+  "exclude": ["./src/types"]
 }

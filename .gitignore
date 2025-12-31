@@ -4,6 +4,6 @@ node_modules/
 work/
 *.cpuprofile
 gesslar-actioneer-*.tgz
-
+.claude/
 # Allow contributors to drop a local tsconfig without committing it
 tsconfig.json

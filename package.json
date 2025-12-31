@@ -29,6 +29,16 @@
   "exports": {
     ".": {
       "types": "./src/types/index.d.ts",
+      "browser": "./src/browser/index.js",
+      "node": "./src/index.js",
+      "default": "./src/index.js"
+    },
+    "./browser": {
+      "types": "./src/types/index.d.ts",
+      "default": "./src/browser/index.js"
+    },
+    "./node": {
+      "types": "./src/types/index.d.ts",
       "default": "./src/index.js"
     }
   },
@@ -43,11 +53,12 @@
   "scripts": {
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
-    "types:build": "tsc -p tsconfig.types.json && eslint --fix \"src/types/**/*.d.ts\"",
+    "types:build": "tsc -p tsconfig.types.json",
     "submit": "pnpm publish --access public --//registry.npmjs.org/:_authToken=\"${NPM_ACCESS_TOKEN}\"",
     "update": "pnpm up --latest --recursive",
-    "test": "node --test tests/unit/*.test.js",
-    "test:unit": "node --test tests/unit/*.test.js",
+    "test": "node --test tests/**/*.test.js",
+    "test:browser": "node --test tests/browser/*.test.js",
+    "test:node": "node --test tests/node/*.test.js",
     "pr": "gt submit -p --ai",
     "patch": "pnpm version patch",
     "minor": "pnpm version minor",
