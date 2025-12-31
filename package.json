@@ -3,10 +3,9 @@
   "description": "The best action pipeline thingie this side of Tatooine, or your money back.",
   "author": {
     "name": "gesslar",
-    "email": "bmw@gesslar.dev",
     "url": "https://gesslar.dev"
   },
-  "version": "1.6.0",
+  "version": "2.0.0",
   "license": "Unlicense",
   "homepage": "https://github.com/gesslar/toolkit#readme",
   "repository": {
