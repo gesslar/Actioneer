@@ -1,60 +1,35 @@
-import {setTimeout as timeout} from "timers/promises"
-import {Data, FileObject, Sass, Promised, Util, Valid} from "@gesslar/toolkit"
+import {FileObject, Sass} from "@gesslar/toolkit"
+import {ActionHooks as BrowserActionHooks} from "../browser/index.js"
 
 /**
  * @typedef {(message: string, level?: number, ...args: Array<unknown>) => void} DebugFn
  */
 
 /**
- * @typedef {object} ActionHooksConfig
+ * @typedef {object} NodeActionHooksConfig
  * @property {string} actionKind Action identifier shared between runner and hooks.
- * @property {FileObject} hooksFile File handle used to import the hooks module.
+ * @property {FileObject} [hooksFile] File handle used to import the hooks module.
  * @property {unknown} [hooks] Already-instantiated hooks implementation (skips loading).
  * @property {number} [hookTimeout] Timeout applied to hook execution in milliseconds.
  * @property {DebugFn} debug Logger to emit diagnostics.
  */
 
 /**
- * @typedef {Record<string, (context: unknown) => Promise<unknown>|unknown>} HookModule
+ * Node.js-enhanced ActionHooks that extends browser version with file-based hook loading.
+ * Inherits all browser functionality and adds FileObject-based hook import capability.
  */
-
-/**
- * Generic base class for managing hooks with configurable event types.
- * Provides common functionality for hook registration, execution, and lifecycle management.
- * Designed to be extended by specific implementations.
- */
-export default class ActionHooks {
+export default class ActionHooks extends BrowserActionHooks {
   /** @type {FileObject|null} */
   #hooksFile = null
-  /** @type {HookModule|null} */
-  #hooks = null
-  /** @type {string|null} */
-  #actionKind = null
-  /** @type {number} */
-  #timeout = 1_000 // Default 1 second timeout
-  /** @type {DebugFn|null} */
-  #debug = null
 
   /**
    * Creates a new ActionHook instance.
    *
-   * @param {ActionHooksConfig} config Configuration values describing how to load the hooks.
+   * @param {NodeActionHooksConfig} config Configuration values describing how to load the hooks.
    */
   constructor({actionKind, hooksFile, hooks, hookTimeout = 1_000, debug}) {
-    this.#actionKind = actionKind
+    super({actionKind, hooks, hookTimeout, debug})
     this.#hooksFile = hooksFile
-    this.#hooks = hooks
-    this.#timeout = hookTimeout
-    this.#debug = debug
-  }
-
-  /**
-   * Gets the action identifier.
-   *
-   * @returns {string} Action identifier or instance
-   */
-  get actionKind() {
-    return this.#actionKind
   }
 
   /**
@@ -64,42 +39,6 @@ export default class ActionHooks {
    */
   get hooksFile() {
     return this.#hooksFile
-  }
-
-  /**
-   * Gets the loaded hooks object.
-   *
-   * @returns {object|null} Hooks object or null if not loaded
-   */
-  get hooks() {
-    return this.#hooks
-  }
-
-  /**
-   * Gets the hook execution timeout in milliseconds.
-   *
-   * @returns {number} Timeout in milliseconds
-   */
-  get timeout() {
-    return this.#timeout
-  }
-
-  /**
-   * Gets the setup hook function if available.
-   *
-   * @returns {(args: object) => unknown|null} Setup hook function or null
-   */
-  get setup() {
-    return this.hooks?.setup || null
-  }
-
-  /**
-   * Gets the cleanup hook function if available.
-   *
-   * @returns {(args: object) => unknown|null} Cleanup hook function or null
-   */
-  get cleanup() {
-    return this.hooks?.cleanup || null
   }
 
   /**
@@ -114,125 +53,49 @@ export default class ActionHooks {
   static async new(config, debug) {
     debug("Creating new HookManager instance with args: %o", 2, config)
 
-    const instance = new ActionHooks({...config, debug})
-    if(!instance.#hooks) {
-      const hooksFile = new FileObject(instance.#hooksFile)
-
-      debug("Loading hooks from %o", 2, hooksFile.uri)
-
-      debug("Checking hooks file exists: %o", 2, hooksFile.uri)
-      if(!await hooksFile.exists)
-        throw Sass.new(`No such hooks file, ${hooksFile.uri}`)
-
-      try {
-        const hooksImport = await hooksFile.import()
-
-        if(!hooksImport)
-          return null
-
-        debug("Hooks file imported successfully as a module", 2)
-
-        const actionKind = instance.actionKind
-        if(!hooksImport[actionKind])
-          return null
-
-        const hooks = new hooksImport[actionKind]({debug})
-
-        debug(hooks.constructor.name, 4)
-
-        instance.#hooks = hooks
-        debug("Hooks %o loaded successfully for %o", 2, hooksFile.uri, instance.actionKind)
-
-        return instance
-      } catch(error) {
-        debug("Failed to load hooks %o: %o", 1, hooksFile.uri, error.message)
-
-        return null
-      }
+    // If hooks already provided, use parent class factory
+    if(config.hooks) {
+      return super.new(config, debug)
     }
 
-    return instance
-  }
+    // Load hooks from file
+    if(!config.hooksFile) {
+      debug("No hooks file provided", 2)
 
-  /**
-   * Invoke a dynamically-named hook such as `before$foo`.
-   *
-   * @param {'before'|'after'|'setup'|'cleanup'|string} kind Hook namespace.
-   * @param {string|symbol} activityName Activity identifier.
-   * @param {unknown} context Pipeline context supplied to the hook.
-   * @returns {Promise<void>}
-   */
-  async callHook(kind, activityName, context) {
+      return null
+    }
+
+    const hooksFile = new FileObject(config.hooksFile)
+
+    debug("Loading hooks from %o", 2, hooksFile.uri)
+    debug("Checking hooks file exists: %o", 2, hooksFile.uri)
+
+    if(!await hooksFile.exists)
+      throw Sass.new(`No such hooks file, ${hooksFile.uri}`)
+
     try {
-      const debug = this.#debug
-      const hooks = this.#hooks
+      const hooksImport = await hooksFile.import()
 
-      if(!hooks)
-        return
+      if(!hooksImport)
+        return null
 
-      const stringActivityName = Data.isType(activityName, "Symbol")
-        ? activityName.description
-        : activityName
+      debug("Hooks file imported successfully as a module", 2)
 
-      const hookName = this.#getActivityHookName(kind, stringActivityName)
+      if(!hooksImport[config.actionKind])
+        return null
 
-      debug("Looking for hook: %o", 4, hookName)
+      const hooks = new hooksImport[config.actionKind]({debug})
 
-      const hook = hooks[hookName]
-      if(!hook)
-        return
+      debug(hooks.constructor.name, 4)
+      debug("Hooks loaded successfully for %o", 2, config.actionKind)
 
-      debug("Triggering hook: %o", 4, hookName)
-      Valid.type(hook, "Function", `Hook "${hookName}" is not a function`)
-
-      const hookFunction = async() => {
-        debug("Hook function starting execution: %o", 4, hookName)
-
-        const duration = (
-          await Util.time(() => hook.call(this.#hooks, context))
-        ).cost
-
-        debug("Hook function completed successfully: %o, after %oms", 4, hookName, duration)
-      }
-
-      const hookTimeout = this.timeout
-      const expireAsync = (async() => {
-        await timeout(hookTimeout)
-        throw Sass.new(`Hook ${hookName} execution exceeded timeout of ${hookTimeout}ms`)
-      })()
-
-      try {
-        debug("Starting Promise race for hook: %o", 4, hookName)
-        await Promised.race([
-          hookFunction(),
-          expireAsync
-        ])
-      } catch(error) {
-        throw Sass.new(`Processing hook ${kind}$${activityName}`, error)
-      }
-
-      debug("We made it throoough the wildernessss", 4)
-
+      // Create instance with loaded hooks
+      return new ActionHooks({...config, hooks, debug})
     } catch(error) {
-      throw Sass.new(`Processing hook ${kind}$${activityName}`, error)
+      debug("Failed to load hooks %o: %o", 1, hooksFile.uri, error.message)
+
+      return null
     }
   }
 
-  #getActivityHookName(event, activityName) {
-    const name = activityName
-      .split(" ")
-      .map(a => a.trim())
-      .filter(Boolean)
-      .map(a => a
-        .split("")
-        .filter(b => /[\w]/.test(b))
-        .filter(Boolean)
-        .join("")
-      )
-      .map(a => a.toLowerCase())
-      .map((a, i) => i === 0 ? a : Util.capitalize(a))
-      .join("")
-
-    return `${event}$${name}`
-  }
 }

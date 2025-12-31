@@ -1,18 +1,97 @@
 # Actioneer
 
-Actioneer is a small, focused Node.js action orchestration library. It provides a fluent builder for composing activities and a concurrent runner with lifecycle hooks and simple loop semantics (while/until). The project is written as ES modules and targets Node 20+.
+Actioneer is a small, focused action orchestration library for Node.js and browser environments. It provides a fluent builder for composing activities and a concurrent runner with lifecycle hooks and simple loop semantics (while/until). The project is written as ES modules and targets Node 20+ and modern browsers.
 
 This repository extracts the action orchestration pieces from a larger codebase and exposes a compact API for building pipelines of work that can run concurrently with hook support and nested pipelines.
 
-## Install
+## Included Classes
 
-From npm:
+### Browser
+
+These classes work in browsers, Node.js, and browser-like environments such as Tauri, Electron, and Deno.
+
+| Name | Description |
+| ---- | ----------- |
+| ActionBuilder | Fluent builder for composing activities into pipelines |
+| ActionHooks | Lifecycle hook management (requires pre-instantiated hooks in browser) |
+| ActionRunner | Concurrent pipeline executor with configurable concurrency |
+| ActionWrapper | Activity container and iterator |
+| Activity | Activity definitions with WHILE, UNTIL, and SPLIT modes |
+| Piper | Base concurrent processing with worker pools |
+
+### Node.js
+
+Includes all browser functionality plus Node.js-specific features for file-based hook loading.
+
+| Name | Description |
+| ---- | ----------- |
+| ActionHooks | Enhanced version with file-based hook loading via `withHooksFile()` |
+
+## Installation
 
 ```bash
 npm install @gesslar/actioneer
 ```
 
-## Quick start
+## Usage
+
+Actioneer is environment-aware and automatically detects whether it is being used in a browser or Node.js. You can optionally specify the `node` or `browser` variant explicitly.
+
+### Browser
+
+#### jsDelivr (runtime only)
+
+```html
+https://cdn.jsdelivr.net/npm/@gesslar/actioneer
+```
+
+#### esm.sh (runtime with types)
+
+```html
+https://esm.sh/@gesslar/actioneer
+https://esm.sh/@gesslar/actioneer?dts  (serves .d.ts for editors)
+```
+
+#### Browser Import Example
+
+```javascript
+import {ActionBuilder, ActionRunner} from "https://esm.sh/@gesslar/actioneer"
+
+class MyAction {
+  setup(builder) {
+    builder
+      .do("step1", ctx => { ctx.result = ctx.input * 2 })
+      .do("step2", ctx => { return ctx.result })
+  }
+}
+
+const builder = new ActionBuilder(new MyAction())
+const runner = new ActionRunner(builder)
+const results = await runner.run({input: 5})
+console.log(results) // 10
+```
+
+### Node.js
+
+#### Auto-detected (recommended)
+
+```javascript
+import {ActionBuilder, ActionRunner} from "@gesslar/actioneer"
+```
+
+#### Explicit variants
+
+```javascript
+// Explicitly use Node.js version (with file-based hooks)
+import {ActionBuilder, ActionRunner, ActionHooks} from "@gesslar/actioneer/node"
+
+// Explicitly use browser version
+import {ActionBuilder, ActionRunner} from "@gesslar/actioneer/browser"
+```
+
+**Note:** The browser version is fully functional in Node.js but lacks file-based hook loading. Use `withHooks()` with pre-instantiated hooks instead of `withHooksFile()`.
+
+## Quick Start
 
 Import the builder and runner, define an action and run it:
 
@@ -299,7 +378,7 @@ This design ensures error handling responsibility stays at the call site - you d
 
 ## ActionHooks
 
-Actioneer supports lifecycle hooks that can execute before and after each activity in your pipeline. Hooks are loaded from a module and can be configured either by file path or by providing a pre-instantiated hooks object.
+Actioneer supports lifecycle hooks that can execute before and after each activity in your pipeline. Hooks can be configured by file path (Node.js only) or by providing a pre-instantiated hooks object (Node.js and browser).
 
 ### Hook System Overview
 
@@ -312,12 +391,49 @@ The hook system allows you to:
 
 ### Configuring Hooks
 
-You can attach hooks to an ActionBuilder in two ways:
+#### Browser: Pre-instantiated Hooks
 
-#### 1. Load hooks from a file
+In browser environments, you must provide pre-instantiated hooks objects:
 
 ```js
-import { ActionBuilder, ActionRunner } from "@gesslar/actioneer"
+import {ActionBuilder, ActionRunner} from "@gesslar/actioneer"
+
+class MyActionHooks {
+  constructor({debug}) {
+    this.debug = debug
+  }
+
+  async before$prepare(context) {
+    this.debug("About to prepare", context)
+  }
+
+  async after$prepare(context) {
+    this.debug("Finished preparing", context)
+  }
+}
+
+const hooks = new MyActionHooks({debug: console.log})
+
+class MyAction {
+  setup(builder) {
+    builder
+      .withHooks(hooks)
+      .do("prepare", ctx => { ctx.count = 0 })
+      .do("work", ctx => { ctx.count += 1 })
+  }
+}
+
+const builder = new ActionBuilder(new MyAction())
+const runner = new ActionRunner(builder)
+const result = await runner.pipe([{}], 4)
+```
+
+#### Node.js: File-based or Pre-instantiated
+
+**Option 1: Load hooks from a file** (Node.js only)
+
+```js
+import {ActionBuilder, ActionRunner} from "@gesslar/actioneer"
 
 class MyAction {
   setup(builder) {
@@ -333,13 +449,13 @@ const runner = new ActionRunner(builder)
 const result = await runner.pipe([{}], 4)
 ```
 
-#### 2. Provide a pre-instantiated hooks object
+**Option 2: Provide a pre-instantiated hooks object** (Node.js and browser)
 
 ```js
-import { ActionBuilder, ActionRunner } from "@gesslar/actioneer"
-import { MyActionHooks } from "./hooks/MyActionHooks.js"
+import {ActionBuilder, ActionRunner} from "@gesslar/actioneer"
+import {MyActionHooks} from "./hooks/MyActionHooks.js"
 
-const hooks = new MyActionHooks({ debug: console.log })
+const hooks = new MyActionHooks({debug: console.log})
 
 class MyAction {
   setup(builder) {
