@@ -64,7 +64,7 @@
     "major": "pnpm version major"
   },
   "dependencies": {
-    "@gesslar/toolkit": "^3.6.1"
+    "@gesslar/toolkit": "^3.6.2"
   },
   "devDependencies": {
     "@gesslar/uglier": "^0.5.0",
