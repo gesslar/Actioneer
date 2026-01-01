@@ -14,7 +14,7 @@ importers:
     devDependencies:
       '@gesslar/uglier':
         specifier: ^0.5.0
-        version: 0.5.0(eslint@9.39.2)
+        version: 0.5.1(eslint@9.39.2)
       eslint:
         specifier: ^9.39.2
         version: 9.39.2
@@ -34,6 +34,12 @@ packages:
 
   '@eslint-community/eslint-utils@4.9.0':
     resolution: {integrity: sha512-ayVFHdtZ+hsq1t2Dy24wCmGXGe4q9Gu3smhLYALJrr473ZH27MsnSL+LKUlimp4BWJqMDMLmPpx/Q9R3OAlL4g==}
+    engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
+    peerDependencies:
+      eslint: ^6.0.0 || ^7.0.0 || >=8.0.0
+
+  '@eslint-community/eslint-utils@4.9.1':
+    resolution: {integrity: sha512-phrYmNiYppR7znFEdqgfWHXR6NCkZEK7hwWDHZUjit/2/U0r6XvkDl0SYnoM51Hq7FhCGdLDT6zxCCOY1hexsQ==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
     peerDependencies:
       eslint: ^6.0.0 || ^7.0.0 || >=8.0.0
@@ -79,8 +85,8 @@ packages:
     resolution: {integrity: sha512-pMA5cHRcJJvpqfxOHfp3sc68xcHhfOvWKyHujgDgUupVfbpSxeFmI3ad4ORglCkxh2V9F+dLPwrKTUUF59q2og==}
     engines: {node: '>=22'}
 
-  '@gesslar/uglier@0.5.0':
-    resolution: {integrity: sha512-RBaFz6m8l2BIp6TerfEbxU0AtWZuzirQTMz0eQ8MCCs65qEfODC7DVYmrwxsu8XZcURCFqR1bQHOfRwf+OMMPg==}
+  '@gesslar/uglier@0.5.1':
+    resolution: {integrity: sha512-1IJYEtzcmCNO1KDijHr6u4MNqCquvbL31NdiUCrqb0sgFxFGvtIvhioE9aoZCtSrKN5+U7YZVFVcttzp8KqhlA==}
     engines: {node: '>=22'}
     hasBin: true
     peerDependencies:
@@ -255,6 +261,10 @@ packages:
 
   esquery@1.6.0:
     resolution: {integrity: sha512-ca9pw9fomFcKPvFLXhBKUK90ZvGibiGOvRJNbjljY7s7uq/5YO4BOzcYtJqExdx99rF6aAcnRxHmcUHcz6sQsg==}
+    engines: {node: '>=0.10'}
+
+  esquery@1.7.0:
+    resolution: {integrity: sha512-Ap6G0WQwcU/LHsvLwON1fAQX9Zp0A2Y6Y/cJBl9r/JbW90Zyg4/zbG6zzKa2OTALELarYHmKu0GhpM5EO+7T0g==}
     engines: {node: '>=0.10'}
 
   esrecurse@4.3.0:
@@ -579,12 +589,17 @@ snapshots:
       '@types/estree': 1.0.8
       '@typescript-eslint/types': 8.51.0
       comment-parser: 1.4.1
-      esquery: 1.6.0
+      esquery: 1.7.0
       jsdoc-type-pratt-parser: 6.10.0
 
   '@es-joy/resolve.exports@1.2.0': {}
 
   '@eslint-community/eslint-utils@4.9.0(eslint@9.39.2)':
+    dependencies:
+      eslint: 9.39.2
+      eslint-visitor-keys: 3.4.3
+
+  '@eslint-community/eslint-utils@4.9.1(eslint@9.39.2)':
     dependencies:
       eslint: 9.39.2
       eslint-visitor-keys: 3.4.3
@@ -640,7 +655,7 @@ snapshots:
       json5: 2.2.3
       yaml: 2.8.2
 
-  '@gesslar/uglier@0.5.0(eslint@9.39.2)':
+  '@gesslar/uglier@0.5.1(eslint@9.39.2)':
     dependencies:
       '@gesslar/colours': 0.5.0
       '@gesslar/toolkit': 3.6.3
@@ -683,7 +698,7 @@ snapshots:
 
   '@stylistic/eslint-plugin@5.6.1(eslint@9.39.2)':
     dependencies:
-      '@eslint-community/eslint-utils': 4.9.0(eslint@9.39.2)
+      '@eslint-community/eslint-utils': 4.9.1(eslint@9.39.2)
       '@typescript-eslint/types': 8.51.0
       eslint: 9.39.2
       eslint-visitor-keys: 4.2.1
@@ -777,7 +792,7 @@ snapshots:
       escape-string-regexp: 4.0.0
       eslint: 9.39.2
       espree: 10.4.0
-      esquery: 1.6.0
+      esquery: 1.7.0
       html-entities: 2.6.0
       object-deep-merge: 2.0.0
       parse-imports-exports: 0.2.4
@@ -842,6 +857,10 @@ snapshots:
       eslint-visitor-keys: 4.2.1
 
   esquery@1.6.0:
+    dependencies:
+      estraverse: 5.3.0
+
+  esquery@1.7.0:
     dependencies:
       estraverse: 5.3.0
 
