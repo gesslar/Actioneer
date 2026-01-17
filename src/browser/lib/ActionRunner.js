@@ -76,104 +76,109 @@ export default class ActionRunner extends Piper {
     const actionWrapper = this.#actionWrapper
     const activities = actionWrapper.activities
 
-    for(const activity of activities) {
-      try {
-        // await timeout(500)
+    try {
+      for(const activity of activities) {
+        try {
+          // await timeout(500)
 
-        const kind = activity.kind
+          const kind = activity.kind
 
-        // If we have no kind, then it's just a once.
-        // Get it over and done with!
-        if(!kind) {
-          context = await this.#execute(activity, context)
-        } else {
-          // Validate that only one activity kind bit is set
-          // (kind & (kind - 1)) !== 0 means multiple bits are set
-          const multipleBitsSet = (kind & (kind - 1)) !== 0
-          if(multipleBitsSet)
-            throw Sass.new(
-              "For Kathy Griffin's sake! You can't combine activity kinds. " +
-              "Pick one: WHILE, UNTIL, or SPLIT!"
-            )
-
-          const {WHILE,UNTIL,SPLIT} = ACTIVITY
-          const kindWhile = kind & WHILE
-          const kindUntil = kind & UNTIL
-          const kindSplit = kind & SPLIT
-
-          if(kindWhile || kindUntil) {
-            const predicate = activity.pred
-
-            for(;;) {
-
-              if(kindWhile)
-                if(!await this.#hasPredicate(activity,predicate,context))
-                  break
-
-              context = await this.#execute(activity,context)
-
-              if(kindUntil)
-                if(await this.#hasPredicate(activity,predicate,context))
-                  break
-            }
-          } else if(kindSplit) {
-            // SPLIT activity: parallel execution with splitter/rejoiner
-            // pattern
-            const {splitter, rejoiner} = activity
-
-            if(!splitter || !rejoiner)
-              throw Sass.new(
-                `SPLIT activity "${String(activity.name)}" requires both ` +
-                `splitter and rejoiner functions.`
-              )
-
-            const original = context
-            const splitContexts = await splitter.call(activity.action, context)
-
-            let settled
-
-            if(activity.opKind === "ActionBuilder") {
-              if(activity.action)
-                activity.op.withAction(activity.action)
-
-              if(activity.hooks)
-                activity.op.withHooks(activity.hooks)
-
-              const runner = new this.constructor(activity.op, {
-                debug: this.#debug, name: activity.name
-              })
-
-              // pipe() returns settled results with concurrency control
-              settled = await runner.pipe(splitContexts)
-            } else {
-              // For plain functions, process each split context
-              settled = await Promised.settle(
-                splitContexts.map(ctx => this.#execute(activity, ctx))
-              )
-            }
-
-            const rejoined = await rejoiner.call(
-              activity.action,
-              original,
-              settled
-            )
-
-            context = rejoined
-          } else {
+          // If we have no kind, then it's just a once.
+          // Get it over and done with!
+          if(!kind) {
             context = await this.#execute(activity, context)
-          }
-        }
-      } catch(error) {
-        throw Sass.new("ActionRunner running activity", error)
-      }
-    }
+          } else {
+            // Validate that only one activity kind bit is set
+            // (kind & (kind - 1)) !== 0 means multiple bits are set
+            const multipleBitsSet = (kind & (kind - 1)) !== 0
+            if(multipleBitsSet)
+              throw Sass.new(
+                "For Kathy Griffin's sake! You can't combine activity kinds. " +
+                "Pick one: WHILE, UNTIL, or SPLIT!"
+              )
 
-    // Execute done callback if registered
-    if(actionWrapper.done) {
-      try {
-        context = await actionWrapper.done(context)
-      } catch(error) {
-        throw Sass.new("ActionRunner running done callback", error)
+            const {WHILE,UNTIL,SPLIT} = ACTIVITY
+            const kindWhile = kind & WHILE
+            const kindUntil = kind & UNTIL
+            const kindSplit = kind & SPLIT
+
+            if(kindWhile || kindUntil) {
+              const predicate = activity.pred
+
+              for(;;) {
+
+                if(kindWhile)
+                  if(!await this.#hasPredicate(activity,predicate,context))
+                    break
+
+                context = await this.#execute(activity,context)
+
+                if(kindUntil)
+                  if(await this.#hasPredicate(activity,predicate,context))
+                    break
+              }
+            } else if(kindSplit) {
+              // SPLIT activity: parallel execution with splitter/rejoiner
+              // pattern
+              const {splitter, rejoiner} = activity
+
+              if(!splitter || !rejoiner)
+                throw Sass.new(
+                  `SPLIT activity "${String(activity.name)}" requires both ` +
+                  `splitter and rejoiner functions.`
+                )
+
+              const original = context
+              const splitContexts = await splitter.call(
+                activity.action, context
+              )
+              let settled
+
+              if(activity.opKind === "ActionBuilder") {
+                if(activity.action)
+                  activity.op.withAction(activity.action)
+
+                if(activity.hooks)
+                  activity.op.withHooks(activity.hooks)
+
+                const runner = new this.constructor(activity.op, {
+                  debug: this.#debug, name: activity.name
+                })
+
+                // pipe() returns settled results with concurrency control
+                settled = await runner.pipe(splitContexts)
+              } else {
+                // For plain functions, process each split context
+                settled = await Promised.settle(
+                  splitContexts.map(ctx => this.#execute(activity, ctx))
+                )
+              }
+
+              const rejoined = await rejoiner.call(
+                activity.action,
+                original,
+                settled
+              )
+
+              context = rejoined
+            } else {
+              context = await this.#execute(activity, context)
+            }
+          }
+        } catch(error) {
+          throw Sass.new("ActionRunner running activity", error)
+        }
+      }
+    } finally {
+      // Execute done callback if registered - always runs, even on error
+      if(actionWrapper.done) {
+        try {
+          context = await actionWrapper.done.call(
+            actionWrapper.action, context
+          )
+        } catch(error) {
+          throw Sass.new("ActionRunner running done callback", error)
+        }
       }
     }
 

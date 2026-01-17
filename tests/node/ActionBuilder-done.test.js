@@ -172,4 +172,59 @@ test("ActionBuilder.done()", async t => {
       /Done failed/
     )
   })
+
+  await t.test("done runs even when activity throws error", async() => {
+    const cleanupCalled = {value: false}
+    const action = {
+      setup(builder) {
+        builder
+          .do("step1", () => ({value: 10}))
+          .do("step2", () => {
+            throw new Error("Activity failed")
+          })
+          .done(ctx => {
+            cleanupCalled.value = true
+
+            // Return original context if it exists, otherwise create one
+            return ctx || {cleaned: true}
+          })
+      }
+    }
+
+    const builder = new ActionBuilder(action, {debug: noopDebug})
+    const runner = new ActionRunner(builder, {debug: noopDebug})
+
+    await assert.rejects(
+      () => runner.run({}),
+      /Activity failed/
+    )
+
+    // Verify done was called despite the error
+    assert.strictEqual(cleanupCalled.value, true)
+  })
+
+  await t.test("done callback has correct this binding to action", async() => {
+    const action = {
+      name: "TestAction",
+      counter: 0,
+      setup(builder) {
+        builder
+          .do("step1", ctx => ctx)
+          .done(function(ctx) {
+            // Use function syntax to test 'this' binding
+            assert.strictEqual(this.name, "TestAction")
+            this.counter++
+
+            return {...ctx, actionName: this.name}
+          })
+      }
+    }
+
+    const builder = new ActionBuilder(action, {debug: noopDebug})
+    const runner = new ActionRunner(builder, {debug: noopDebug})
+    const result = await runner.run({value: 42})
+
+    assert.strictEqual(result.actionName, "TestAction")
+    assert.strictEqual(action.counter, 1)
+  })
 })

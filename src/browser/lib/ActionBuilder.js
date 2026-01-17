@@ -296,6 +296,7 @@ export default class ActionBuilder {
       debug: this.#debug,
       hooks,
       done: this.#done,
+      action: this.#action,
     })
   }
 
