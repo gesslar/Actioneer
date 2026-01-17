@@ -8,9 +8,14 @@ import Piper from "./Piper.js"
  */
 
 /**
+ * @typedef {import("./ActionBuilder.js").default} ActionBuilder
+ */
+
+/**
  * @typedef {object} ActionRunnerOptions
  * @property {DebugFn} [debug] Logger function.
  */
+
 /**
  * Orchestrates execution of {@link ActionBuilder}-produced pipelines.
  *
@@ -160,6 +165,15 @@ export default class ActionRunner extends Piper {
         }
       } catch(error) {
         throw Sass.new("ActionRunner running activity", error)
+      }
+    }
+
+    // Execute done callback if registered
+    if(actionWrapper.done) {
+      try {
+        context = await actionWrapper.done(context)
+      } catch(error) {
+        throw Sass.new("ActionRunner running done callback", error)
       }
     }
 

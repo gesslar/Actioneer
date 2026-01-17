@@ -22,7 +22,7 @@
     "composition",
     "lasagna"
   ],
-  "packageManager": "pnpm@10.26.2",
+  "packageManager": "pnpm@10.28.0",
   "main": "./src/index.js",
   "type": "module",
   "exports": {
@@ -52,9 +52,9 @@
   "scripts": {
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
-    "types:build": "tsc -p tsconfig.types.json",
+    "types": "node -e \"require('fs').rmSync('types',{recursive:true,force:true});\" && tsc -p tsconfig.types.json",
     "submit": "pnpm publish --access public --//registry.npmjs.org/:_authToken=\"${NPM_ACCESS_TOKEN}\"",
-    "update": "pnpm up --latest --recursive",
+    "update": "pnpm self-update && pnpx npm-check-updates -u && pnpm install",
     "test": "node --test tests/**/*.test.js",
     "test:browser": "node --test tests/browser/*.test.js",
     "test:node": "node --test tests/node/*.test.js",
@@ -64,10 +64,10 @@
     "major": "pnpm version major"
   },
   "dependencies": {
-    "@gesslar/toolkit": "^3.6.2"
+    "@gesslar/toolkit": "^3.23.0"
   },
   "devDependencies": {
-    "@gesslar/uglier": "^1.0.0",
+    "@gesslar/uglier": "^1.1.0",
     "eslint": "^9.39.2",
     "typescript": "^5.9.3"
   }

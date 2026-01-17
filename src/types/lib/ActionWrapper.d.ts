@@ -19,7 +19,7 @@ export default class ActionWrapper {
    *
    * @param {{activities: Map<string|symbol, WrappedActivityConfig>, debug: (message: string, level?: number, ...args: Array<unknown>) => void}} init Builder payload containing activities + logger.
    */
-  constructor({ activities, hooks, debug }: {
+  constructor({ activities, hooks, debug, done: doneCallback }: {
     activities: Map<string | symbol, WrappedActivityConfig>;
     debug: (message: string, level?: number, ...args: Array<unknown>) => void;
   })
@@ -29,6 +29,12 @@ export default class ActionWrapper {
    * @returns {ActivityIterator} Lazy iterator yielding Activity instances.
    */
   get activities(): ActivityIterator
+  /**
+   * Get the done callback if registered.
+   *
+   * @returns {((context: unknown) => unknown|Promise<unknown>)|null} Done callback or null.
+   */
+  get done(): ((context: unknown) => unknown | Promise<unknown>) | null
   #private
 }
 export type WrappedActivityConfig = {

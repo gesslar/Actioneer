@@ -11,7 +11,7 @@ import Activity from "./Activity.js"
  */
 
 /**
- * @typedef {Generator<Activity, void, unknown>} ActivityIterator
+ * @typedef {import("@gesslar/toolkit").Generator<Activity, void, unknown>} ActivityIterator
  */
 
 /**
@@ -33,14 +33,17 @@ export default class ActionWrapper {
 
   #hooks = null
 
+  #done = null
+
   /**
    * Create a wrapper from the builder payload.
    *
    * @param {{activities: Map<string|symbol, WrappedActivityConfig>, debug: (message: string, level?: number, ...args: Array<unknown>) => void}} init Builder payload containing activities + logger.
    */
-  constructor({activities,hooks,debug}) {
+  constructor({activities,hooks,debug,done: doneCallback}) {
     this.#debug = debug
     this.#hooks = hooks
+    this.#done = doneCallback
     this.#activities = activities
     this.#debug(
       "Instantiating ActionWrapper with %o activities.",
@@ -61,5 +64,14 @@ export default class ActionWrapper {
    */
   get activities() {
     return this.#_activities()
+  }
+
+  /**
+   * Get the done callback if registered.
+   *
+   * @returns {((context: unknown) => unknown|Promise<unknown>)|null} Done callback or null.
+   */
+  get done() {
+    return this.#done
   }
 }

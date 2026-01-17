@@ -8,7 +8,7 @@
  * @property {(message: string, level?: number, ...args: Array<unknown>) => void} [debug] Optional logger reference.
  */
 /**
- * @typedef {Generator<Activity, void, unknown>} ActivityIterator
+ * @typedef {import("@gesslar/toolkit").Generator<Activity, void, unknown>} ActivityIterator
  */
 /**
  * Thin wrapper that materialises {@link Activity} instances on demand.
@@ -19,7 +19,7 @@ export default class ActionWrapper {
      *
      * @param {{activities: Map<string|symbol, WrappedActivityConfig>, debug: (message: string, level?: number, ...args: Array<unknown>) => void}} init Builder payload containing activities + logger.
      */
-    constructor({ activities, hooks, debug }: {
+    constructor({ activities, hooks, debug, done: doneCallback }: {
         activities: Map<string | symbol, WrappedActivityConfig>;
         debug: (message: string, level?: number, ...args: Array<unknown>) => void;
     });
@@ -29,6 +29,12 @@ export default class ActionWrapper {
      * @returns {ActivityIterator} Lazy iterator yielding Activity instances.
      */
     get activities(): ActivityIterator;
+    /**
+     * Get the done callback if registered.
+     *
+     * @returns {((context: unknown) => unknown|Promise<unknown>)|null} Done callback or null.
+     */
+    get done(): ((context: unknown) => unknown | Promise<unknown>) | null;
     #private;
 }
 export type WrappedActivityConfig = {
@@ -57,6 +63,6 @@ export type WrappedActivityConfig = {
      */
     debug?: ((message: string, level?: number, ...args: Array<unknown>) => void) | undefined;
 };
-export type ActivityIterator = Generator<Activity, void, unknown>;
+export type ActivityIterator = import("@gesslar/toolkit").Generator<Activity, void, unknown>;
 import Activity from "./Activity.js";
 //# sourceMappingURL=ActionWrapper.d.ts.map
