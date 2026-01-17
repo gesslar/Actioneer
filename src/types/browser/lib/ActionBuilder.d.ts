@@ -113,6 +113,13 @@ export default class ActionBuilder {
      */
     withAction(action: ActionBuilderAction): ActionBuilder;
     /**
+     * Register a callback to be executed after all activities complete.
+     *
+     * @param {ActionFunction} callback Function to execute at the end of the pipeline.
+     * @returns {ActionBuilder} The builder instance for chaining.
+     */
+    done(callback: ActionFunction): ActionBuilder;
+    /**
      * Finalises the builder and returns a payload that can be consumed by the
      * runner.
      *

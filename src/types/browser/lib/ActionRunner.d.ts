@@ -2,6 +2,9 @@
  * @typedef {(message: string, level?: number, ...args: Array<unknown>) => void} DebugFn
  */
 /**
+ * @typedef {import("./ActionBuilder.js").default} ActionBuilder
+ */
+/**
  * @typedef {object} ActionRunnerOptions
  * @property {DebugFn} [debug] Logger function.
  */
@@ -33,6 +36,7 @@ export default class ActionRunner extends Piper {
     #private;
 }
 export type DebugFn = (message: string, level?: number, ...args: Array<unknown>) => void;
+export type ActionBuilder = import("./ActionBuilder.js").default;
 export type ActionRunnerOptions = {
     /**
      * Logger function.

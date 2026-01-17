@@ -15,6 +15,13 @@
  */
 export default class ActionHooks extends BrowserActionHooks {
     /**
+     * @typedef {object} ActionHooksConfig
+     * @property {string} [hooksFile] Path to the hooks file
+     * @property {string} [hooksKind] Name of the hooks class to instantiate
+     * @property {object} [hooks] Pre-instantiated hooks object
+     * @property {number} [timeout] Timeout for hook execution
+     */
+    /**
      * Static factory method to create and initialize a hook manager.
      * Loads hooks from the specified file and returns an initialized instance.
      * Override loadHooks() in subclasses to customize hook loading logic.
@@ -23,7 +30,24 @@ export default class ActionHooks extends BrowserActionHooks {
      * @param {DebugFn} debug The debug function.
      * @returns {Promise<ActionHooks|null>} Initialized hook manager or null if no hooks found
      */
-    static "new"(config: ActionHooksConfig, debug: DebugFn): Promise<ActionHooks | null>;
+    static "new"(config: {
+        /**
+         * Path to the hooks file
+         */
+        hooksFile?: string | undefined;
+        /**
+         * Name of the hooks class to instantiate
+         */
+        hooksKind?: string | undefined;
+        /**
+         * Pre-instantiated hooks object
+         */
+        hooks?: object | undefined;
+        /**
+         * Timeout for hook execution
+         */
+        timeout?: number | undefined;
+    }, debug: DebugFn): Promise<ActionHooks | null>;
     /**
      * Creates a new ActionHook instance.
      *

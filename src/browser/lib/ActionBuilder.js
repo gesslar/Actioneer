@@ -69,6 +69,7 @@ export default class ActionBuilder {
   #hooksFile = null
   #hooksKind = null
   #hooks = null
+  #done = null
 
   /**
    * Creates a new ActionBuilder instance with the provided action callback.
@@ -247,6 +248,19 @@ export default class ActionBuilder {
   }
 
   /**
+   * Register a callback to be executed after all activities complete.
+   *
+   * @param {ActionFunction} callback Function to execute at the end of the pipeline.
+   * @returns {ActionBuilder} The builder instance for chaining.
+   */
+  done(callback) {
+    Valid.type(callback, "Function")
+    this.#done = callback
+
+    return this
+  }
+
+  /**
    * Validates that an activity name has not been reused.
    *
    * @private
@@ -281,6 +295,7 @@ export default class ActionBuilder {
       activities: this.#activities,
       debug: this.#debug,
       hooks,
+      done: this.#done,
     })
   }
 

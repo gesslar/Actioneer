@@ -42,6 +42,14 @@ export default class ActionHooks extends BrowserActionHooks {
   }
 
   /**
+   * @typedef {object} ActionHooksConfig
+   * @property {string} [hooksFile] Path to the hooks file
+   * @property {string} [hooksKind] Name of the hooks class to instantiate
+   * @property {object} [hooks] Pre-instantiated hooks object
+   * @property {number} [timeout] Timeout for hook execution
+   */
+
+  /**
    * Static factory method to create and initialize a hook manager.
    * Loads hooks from the specified file and returns an initialized instance.
    * Override loadHooks() in subclasses to customize hook loading logic.

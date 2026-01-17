@@ -109,7 +109,7 @@ export default class Piper {
     }
 
     const setupResult = await Promised.settle(
-      [...this.#lifeCycle.get("setup")].map(e => e())
+      [...this.#lifeCycle.get("setup")].map(e => Promise.resolve(e()))
     )
 
     this.#processResult("Setting up the pipeline.", setupResult)
@@ -127,7 +127,7 @@ export default class Piper {
     } finally {
       // Run cleanup hooks
       const teardownResult = await Promised.settle(
-        [...this.#lifeCycle.get("teardown")].map(e => e())
+        [...this.#lifeCycle.get("teardown")].map(e => Promise.resolve(e()))
       )
 
       this.#processResult("Tearing down the pipeline.", teardownResult)
