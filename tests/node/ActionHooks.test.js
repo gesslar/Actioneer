@@ -157,7 +157,7 @@ describe("ActionHooks", () => {
       assert.ok(typeof hooks.callHook === "function")
     })
 
-    // Note: callHook has a bug at line 173 where Data.isType("Symbol") 
+    // Note: callHook has a bug at line 173 where Data.isType("Symbol")
     // is checking if the string "Symbol" is a type, not if activityName is a Symbol.
     // This causes callHook to fail with TypeError. These tests document
     // the current behavior rather than test broken functionality.
@@ -165,21 +165,21 @@ describe("ActionHooks", () => {
 
   describe("static new()", () => {
     it("loads hooks from file", async () => {
-      // Create a temporary hooks file  
+      // Create a temporary hooks file
       const {mkdtemp, writeFile, rm} = await import("node:fs/promises")
-      const {join} = await import("node:path")
+      const {join, resolve} = await import("node:path")
       const {tmpdir} = await import("node:os")
-      
+
       const tempDir = await mkdtemp(join(tmpdir(), "actioneer-test-"))
-      
+
       try {
-        const hooksPath = join(tempDir, "TestHooks.js")
+        const hooksPath = resolve(join(tempDir, "TestHooks.js"))
         const hooksContent = `
 export class TestHooks {
   constructor({ debug }) {
     this.debug = debug
   }
-  
+
   before$test() {}
   after$test() {}
 }
@@ -235,13 +235,13 @@ export class TestHooks {
 
     it("returns null when class not found in module", async () => {
       const {mkdtemp, writeFile, rm} = await import("node:fs/promises")
-      const {join} = await import("node:path")
+      const {join, resolve} = await import("node:path")
       const {tmpdir} = await import("node:os")
-      
+
       const tempDir = await mkdtemp(join(tmpdir(), "actioneer-test-"))
-      
+
       try {
-        const hooksPath = join(tempDir, "EmptyHooks.js")
+        const hooksPath = resolve(join(tempDir, "EmptyHooks.js"))
         const hooksContent = `export class OtherHooks {}`
         await writeFile(hooksPath, hooksContent)
 

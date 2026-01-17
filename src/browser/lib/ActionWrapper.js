@@ -35,15 +35,18 @@ export default class ActionWrapper {
 
   #done = null
 
+  #action = null
+
   /**
    * Create a wrapper from the builder payload.
    *
    * @param {{activities: Map<string|symbol, WrappedActivityConfig>, debug: (message: string, level?: number, ...args: Array<unknown>) => void}} init Builder payload containing activities + logger.
    */
-  constructor({activities,hooks,debug,done: doneCallback}) {
+  constructor({activities,hooks,debug,done: doneCallback,action}) {
     this.#debug = debug
     this.#hooks = hooks
     this.#done = doneCallback
+    this.#action = action
     this.#activities = activities
     this.#debug(
       "Instantiating ActionWrapper with %o activities.",
@@ -73,5 +76,14 @@ export default class ActionWrapper {
    */
   get done() {
     return this.#done
+  }
+
+  /**
+   * Get the action instance.
+   *
+   * @returns {unknown|null} Action instance or null.
+   */
+  get action() {
+    return this.#action
   }
 }
