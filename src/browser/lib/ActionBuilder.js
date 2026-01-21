@@ -66,9 +66,13 @@ export default class ActionBuilder {
   #debug = null
   /** @type {symbol|null} */
   #tag = null
+  /** @type {string|null} */
   #hooksFile = null
+  /** @type {string|null} */
   #hooksKind = null
+  /** @type {import("./ActionHooks.js").default|null} */
   #hooks = null
+  /** @type {ActionFunction|null} */
   #done = null
 
   /**
@@ -100,9 +104,10 @@ export default class ActionBuilder {
    * Register an activity that the runner can execute.
    *
    * Overloads:
-   * - do(name, op)
-   * - do(name, kind, pred, opOrWrapper)
-   * - do(name, kind, splitter, rejoiner, opOrWrapper)
+   * - do(name, op) - Simple once-off activity
+   * - do(name, kind, pred) - BREAK/CONTINUE control flow (no op, just predicate)
+   * - do(name, kind, pred, opOrWrapper) - WHILE/UNTIL/IF with predicate and operation
+   * - do(name, kind, splitter, rejoiner, opOrWrapper) - SPLIT with parallel execution
    *
    * @overload
    * @param {string|symbol} name Activity name
@@ -113,9 +118,17 @@ export default class ActionBuilder {
   /**
    * @overload
    * @param {string|symbol} name Activity name
-   * @param {number} kind Kind bitfield from {@link ActivityFlags}.
+   * @param {number} kind ACTIVITY.BREAK or ACTIVITY.CONTINUE flag.
+   * @param {(context: unknown) => boolean|Promise<boolean>} pred Predicate to evaluate for control flow.
+   * @returns {ActionBuilder}
+   */
+
+  /**
+   * @overload
+   * @param {string|symbol} name Activity name
+   * @param {number} kind Activity kind (WHILE, UNTIL, or IF) from {@link ActivityFlags}.
    * @param {(context: unknown) => boolean|Promise<boolean>} pred Predicate executed before/after the op.
-   * @param {ActionFunction|import("./ActionWrapper.js").default} op Operation or nested wrapper to execute.
+   * @param {ActionFunction|ActionBuilder} op Operation or nested builder to execute.
    * @returns {ActionBuilder}
    */
 
@@ -125,7 +138,7 @@ export default class ActionBuilder {
    * @param {number} kind ACTIVITY.SPLIT flag.
    * @param {(context: unknown) => unknown} splitter Splitter function for SPLIT mode.
    * @param {(originalContext: unknown, splitResults: unknown) => unknown} rejoiner Rejoiner function for SPLIT mode.
-   * @param {ActionFunction|import("./ActionWrapper.js").default} op Operation or nested wrapper to execute.
+   * @param {ActionFunction|ActionBuilder} op Operation or nested builder to execute.
    * @returns {ActionBuilder}
    */
 
@@ -142,6 +155,7 @@ export default class ActionBuilder {
     // signatures
     // name, [function] => once
     // name, [number,function,function] => some kind of control operation (WHILE/UNTIL)
+    // name, [number,function] => some kind of control operation (BREAK/CONTINUE)
     // name, [number,function,function,function] => SPLIT operation with splitter/rejoiner
     // name, [number,function,ActionBuilder] => some kind of branch
 
@@ -155,6 +169,13 @@ export default class ActionBuilder {
       Valid.type(op, "Function")
 
       Object.assign(activityDefinition, {op, kind})
+    } else if(args.length === 2) {
+      const [kind, pred] = args
+      Valid.type(kind, "Number")
+      Valid.type(pred, "Function")
+      Valid.assert(kind === ACTIVITY.BREAK || kind === ACTIVITY.CONTINUE, "Invalid arguments for BREAK/CONTINUE.")
+
+      Object.assign(activityDefinition, {kind, pred})
     } else if(args.length === 3) {
       const [kind, pred, op] = args
 
@@ -172,7 +193,7 @@ export default class ActionBuilder {
       Valid.type(op, "Function|ActionBuilder")
 
       // Validate that kind is SPLIT
-      if((kind & ACTIVITY.SPLIT) !== ACTIVITY.SPLIT)
+      if(kind !== ACTIVITY.SPLIT)
         throw Sass.new("4-argument form of 'do' is only valid for ACTIVITY.SPLIT")
 
       Object.assign(activityDefinition, {kind, splitter, rejoiner, op})

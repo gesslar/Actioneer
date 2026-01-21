@@ -1,6 +1,6 @@
 # Actioneer
 
-Actioneer is a small, focused action orchestration library for Node.js and browser environments. It provides a fluent builder for composing activities and a concurrent runner with lifecycle hooks and simple loop semantics (while/until). The project is written as ES modules and targets Node 20+ and modern browsers.
+Actioneer is a small, focused action orchestration library for Node.js and browser environments. It provides a fluent builder for composing activities and a concurrent runner with lifecycle hooks and control flow semantics (while/until/if/break/continue). The project is written as ES modules and targets Node 20+ and modern browsers.
 
 This repository extracts the action orchestration pieces from a larger codebase and exposes a compact API for building pipelines of work that can run concurrently with hook support and nested pipelines.
 
@@ -16,7 +16,7 @@ These classes work in browsers, Node.js, and browser-like environments such as T
 | ActionHooks | Lifecycle hook management (requires pre-instantiated hooks in browser) |
 | ActionRunner | Concurrent pipeline executor with configurable concurrency |
 | ActionWrapper | Activity container and iterator |
-| Activity | Activity definitions with WHILE, UNTIL, and SPLIT modes |
+| Activity | Activity definitions with WHILE, UNTIL, IF, BREAK, CONTINUE, and SPLIT modes |
 | Piper | Base concurrent processing with worker pools |
 
 ### Node.js
@@ -133,7 +133,7 @@ If you'd like more complete typings or additional JSDoc, open an issue or send a
 
 ## Activity Modes
 
-Actioneer supports four distinct execution modes for activities, allowing you to control how operations are executed:
+Actioneer supports six distinct execution modes for activities, allowing you to control how operations are executed:
 
 ### Execute Once (Default)
 
@@ -202,6 +202,133 @@ class ProcessorAction {
 ```
 
 The activity executes at least once, then continues while the predicate returns `false`. Once it returns `true`, execution moves to the next activity.
+
+### IF Mode
+
+Conditionally executes an activity based on a predicate. Unlike WHILE/UNTIL, IF executes at most once:
+
+```js
+import { ActionBuilder, ACTIVITY } from "@gesslar/actioneer"
+
+class ConditionalAction {
+  #shouldProcess = (ctx) => ctx.value > 10
+
+  #processLargeValue = (ctx) => {
+    ctx.processed = ctx.value * 2
+  }
+
+  setup(builder) {
+    builder
+      .do("initialize", ctx => { ctx.value = 15 })
+      .do("maybeProcess", ACTIVITY.IF, this.#shouldProcess, this.#processLargeValue)
+      .do("finish", ctx => { return ctx })
+  }
+}
+```
+
+If the predicate returns `true`, the activity executes once. If `false`, the activity is skipped entirely and execution moves to the next activity.
+
+### BREAK Mode
+
+Breaks out of a WHILE or UNTIL loop when a predicate returns `true`. BREAK must be used inside a nested ActionBuilder within a loop:
+
+```js
+import { ActionBuilder, ACTIVITY } from "@gesslar/actioneer"
+
+class BreakExample {
+  setup(builder) {
+    builder
+      .do("initialize", ctx => {
+        ctx.count = 0
+        ctx.items = []
+      })
+      .do("loop", ACTIVITY.WHILE, ctx => ctx.count < 100,
+        new ActionBuilder()
+          .do("increment", ctx => {
+            ctx.count++
+            ctx.items.push(ctx.count)
+            return ctx
+          })
+          .do("earlyExit", ACTIVITY.BREAK, ctx => ctx.count >= 5)
+      )
+      .do("finish", ctx => { return ctx.items }) // Returns [1, 2, 3, 4, 5]
+  }
+}
+```
+
+When the BREAK predicate returns `true`, the loop terminates immediately and execution continues with the next activity after the loop.
+
+**Important:** BREAK only works inside a nested ActionBuilder that is the operation of a WHILE or UNTIL activity. Using BREAK outside of a loop context will throw an error.
+
+### CONTINUE Mode
+
+Skips the remaining activities in the current loop iteration and continues to the next iteration. Like BREAK, CONTINUE must be used inside a nested ActionBuilder within a loop:
+
+```js
+import { ActionBuilder, ACTIVITY } from "@gesslar/actioneer"
+
+class ContinueExample {
+  setup(builder) {
+    builder
+      .do("initialize", ctx => {
+        ctx.count = 0
+        ctx.processed = []
+      })
+      .do("loop", ACTIVITY.WHILE, ctx => ctx.count < 5,
+        new ActionBuilder()
+          .do("increment", ctx => {
+            ctx.count++
+            return ctx
+          })
+          .do("skipEvens", ACTIVITY.CONTINUE, ctx => ctx.count % 2 === 0)
+          .do("process", ctx => {
+            ctx.processed.push(ctx.count)
+            return ctx
+          })
+      )
+      .do("finish", ctx => { return ctx.processed }) // Returns [1, 3, 5]
+  }
+}
+```
+
+When the CONTINUE predicate returns `true`, the remaining activities in that iteration are skipped, and the loop continues with its next iteration (re-evaluating the loop predicate for WHILE, or executing the operation then evaluating for UNTIL).
+
+**Important:** Like BREAK, CONTINUE only works inside a nested ActionBuilder within a WHILE or UNTIL loop.
+
+### Combining Control Flow
+
+You can combine IF, BREAK, and CONTINUE within the same loop for complex control flow:
+
+```js
+class CombinedExample {
+  setup(builder) {
+    builder
+      .do("initialize", ctx => {
+        ctx.count = 0
+        ctx.results = []
+      })
+      .do("loop", ACTIVITY.WHILE, ctx => ctx.count < 100,
+        new ActionBuilder()
+          .do("increment", ctx => { ctx.count++; return ctx })
+          .do("exitAt10", ACTIVITY.BREAK, ctx => ctx.count > 10)
+          .do("skipEvens", ACTIVITY.CONTINUE, ctx => ctx.count % 2 === 0)
+          .do("processLarge", ACTIVITY.IF, ctx => ctx.count > 5, ctx => {
+            ctx.results.push(ctx.count * 10)
+            return ctx
+          })
+          .do("processAll", ctx => {
+            ctx.results.push(ctx.count)
+            return ctx
+          })
+      )
+  }
+}
+// Results: [1, 3, 5, 70, 7, 90, 9]
+// - 1, 3, 5: odd numbers <= 5, just pushed
+// - 7, 9: odd numbers > 5, pushed with *10 first, then pushed
+// - evens skipped by CONTINUE
+// - loop exits when count > 10
+```
 
 ### SPLIT Mode
 
@@ -301,18 +428,22 @@ class NestedParallel {
 
 ### Mode Constraints
 
-- **Only one mode per activity**: You cannot combine WHILE, UNTIL, and SPLIT. Attempting to use multiple modes will throw an error: `"You can't combine activity kinds. Pick one: WHILE, UNTIL, or SPLIT!"`
+- **Only one mode per activity**: Each activity can have only one mode. Attempting to combine modes will throw an error
 - **SPLIT requires both functions**: The splitter and rejoiner are both mandatory for SPLIT mode
-- **Predicates must return boolean**: For WHILE and UNTIL modes, predicates should return `true` or `false`
+- **Predicates must return boolean**: All predicates (WHILE, UNTIL, IF, BREAK, CONTINUE) should return `true` or `false`
+- **BREAK/CONTINUE require loop context**: These modes only work inside a nested ActionBuilder within a WHILE or UNTIL loop
 
 ### Mode Summary Table
 
-| Mode        | Signature                                                  | Predicate Timing | Use Case                             |
-| ----------- | ---------------------------------------------------------- | ---------------- | ------------------------------------ |
-| **Default** | `.do(name, operation)`                                     | N/A              | Execute once per context             |
-| **WHILE**   | `.do(name, ACTIVITY.WHILE, predicate, operation)`          | Before iteration | Loop while condition is true         |
-| **UNTIL**   | `.do(name, ACTIVITY.UNTIL, predicate, operation)`          | After iteration  | Loop until condition is true         |
-| **SPLIT**   | `.do(name, ACTIVITY.SPLIT, splitter, rejoiner, operation)` | N/A              | Parallel execution with split/rejoin |
+| Mode         | Signature                                                  | Predicate Timing | Use Case                                    |
+| ------------ | ---------------------------------------------------------- | ---------------- | ------------------------------------------- |
+| **Default**  | `.do(name, operation)`                                     | N/A              | Execute once per context                    |
+| **WHILE**    | `.do(name, ACTIVITY.WHILE, predicate, operation)`          | Before iteration | Loop while condition is true                |
+| **UNTIL**    | `.do(name, ACTIVITY.UNTIL, predicate, operation)`          | After iteration  | Loop until condition is true                |
+| **IF**       | `.do(name, ACTIVITY.IF, predicate, operation)`             | Before execution | Conditional execution (once or skip)        |
+| **BREAK**    | `.do(name, ACTIVITY.BREAK, predicate)`                     | When reached     | Exit enclosing WHILE/UNTIL loop             |
+| **CONTINUE** | `.do(name, ACTIVITY.CONTINUE, predicate)`                  | When reached     | Skip to next iteration of enclosing loop    |
+| **SPLIT**    | `.do(name, ACTIVITY.SPLIT, splitter, rejoiner, operation)` | N/A              | Parallel execution with split/rejoin        |
 
 ## Running Actions: `run()` vs `pipe()`
 
@@ -375,6 +506,74 @@ The `pipe()` method uses `Promise.allSettled()` internally and returns an array 
 - `{status: "rejected", reason: <error>}` for failed executions
 
 This design ensures error handling responsibility stays at the call site - you decide how to handle failures rather than the framework deciding for you.
+
+## Pipeline Completion: `done()`
+
+The `done()` method registers a callback that executes after all activities in the pipeline complete, regardless of whether an error occurred. This is useful for cleanup, finalization, or returning a transformed result.
+
+```js
+import { ActionBuilder, ActionRunner } from "@gesslar/actioneer"
+
+class MyAction {
+  setup(builder) {
+    builder
+      .do("step1", ctx => { ctx.a = 1 })
+      .do("step2", ctx => { ctx.b = 2 })
+      .done(ctx => {
+        // This runs after all activities complete
+        return { total: ctx.a + ctx.b }
+      })
+  }
+}
+
+const builder = new ActionBuilder(new MyAction())
+const runner = new ActionRunner(builder)
+const result = await runner.run({})
+console.log(result) // { total: 3 }
+```
+
+### Key Behaviors
+
+- **Always executes**: The `done()` callback runs even if an earlier activity throws an error (similar to `finally` in try/catch)
+- **Top-level only**: The callback only runs for the outermost pipeline, not for nested builders inside loops (WHILE/UNTIL). However, for SPLIT activities, `done()` runs for each split context since each is an independent execution
+- **Transform the result**: Whatever you return from `done()` becomes the final pipeline result
+- **Access to action context**: The callback is bound to the action instance, so `this` refers to your action class
+- **Async support**: The callback can be async and return a Promise
+
+### Use Cases
+
+**Cleanup resources:**
+
+```js
+builder
+  .do("openConnection", ctx => { ctx.conn = openDb() })
+  .do("query", ctx => { ctx.data = ctx.conn.query("SELECT *") })
+  .done(ctx => {
+    ctx.conn.close() // Always close, even on error
+    return ctx.data
+  })
+```
+
+**Transform the final result:**
+
+```js
+builder
+  .do("gather", ctx => { ctx.items = [1, 2, 3] })
+  .do("process", ctx => { ctx.items = ctx.items.map(x => x * 2) })
+  .done(ctx => ctx.items) // Return just the items array, not the whole context
+```
+
+**Logging and metrics:**
+
+```js
+builder
+  .do("start", ctx => { ctx.startTime = Date.now() })
+  .do("work", ctx => { /* ... */ })
+  .done(ctx => {
+    console.log(`Pipeline completed in ${Date.now() - ctx.startTime}ms`)
+    return ctx
+  })
+```
 
 ## ActionHooks
 
@@ -558,9 +757,9 @@ Run the comprehensive test suite with Node's built-in test runner:
 npm test
 ```
 
-The test suite includes 150+ tests covering all core classes and behaviors:
+The test suite includes 200+ tests covering all core classes and behaviors:
 
-- **Activity** - Activity definitions, ACTIVITY flags (WHILE, UNTIL, SPLIT), and execution
+- **Activity** - Activity definitions, ACTIVITY flags (WHILE, UNTIL, IF, BREAK, CONTINUE, SPLIT), and execution
 - **ActionBuilder** - Fluent builder API, activity registration, and hooks configuration
 - **ActionWrapper** - Activity iteration and integration with ActionBuilder
 - **ActionRunner** - Pipeline execution, loop semantics, nested builders, and error handling

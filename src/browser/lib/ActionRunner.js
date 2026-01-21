@@ -1,4 +1,4 @@
-import {Promised, Data, Sass, Valid} from "@gesslar/toolkit"
+import {Promised, Data, Sass, Valid, Notify} from "@gesslar/toolkit"
 
 import {ACTIVITY} from "./Activity.js"
 import Piper from "./Piper.js"
@@ -37,6 +37,13 @@ export default class ActionRunner extends Piper {
   #debug = () => {}
 
   /**
+   * Event emitter for cross-runner communication (BREAK/CONTINUE signals).
+   *
+   * @type {typeof Notify}
+   */
+  #notify = Notify
+
+  /**
    * Instantiate a runner over an optional action wrapper.
    *
    * @param {import("./ActionBuilder.js").default|null} actionBuilder ActionBuilder to build.
@@ -63,24 +70,29 @@ export default class ActionRunner extends Piper {
   /**
    * Executes the configured action pipeline.
    * Builds the ActionWrapper on first run and caches it for subsequent calls.
-   * Supports WHILE, UNTIL, and SPLIT activity kinds.
+   * Supports WHILE, UNTIL, IF, SPLIT, BREAK, and CONTINUE activity kinds.
    *
    * @param {unknown} context - Seed value passed to the first activity.
+   * @param {import("./ActionWrapper.js").default|null} [parentWrapper] - Parent wrapper for BREAK/CONTINUE signaling.
    * @returns {Promise<unknown>} Final value produced by the pipeline.
    * @throws {Sass} When no activities are registered, conflicting activity kinds are used, or execution fails.
    */
-  async run(context) {
+  async run(context, parentWrapper=null) {
     if(!this.#actionWrapper)
       this.#actionWrapper = await this.#actionBuilder.build()
 
     const actionWrapper = this.#actionWrapper
-    const activities = actionWrapper.activities
+    const activities = Array.from(actionWrapper.activities)
 
     try {
-      for(const activity of activities) {
-        try {
-          // await timeout(500)
+      for(
+        let cursor = 0, max = activities.length;
+        cursor < max && cursor !== -1;
+        cursor++
+      ) {
+        const activity = activities[cursor]
 
+        try {
           const kind = activity.kind
 
           // If we have no kind, then it's just a once.
@@ -88,33 +100,50 @@ export default class ActionRunner extends Piper {
           if(!kind) {
             context = await this.#execute(activity, context)
           } else {
-            // Validate that only one activity kind bit is set
-            // (kind & (kind - 1)) !== 0 means multiple bits are set
-            const multipleBitsSet = (kind & (kind - 1)) !== 0
-            if(multipleBitsSet)
-              throw Sass.new(
-                "For Kathy Griffin's sake! You can't combine activity kinds. " +
-                "Pick one: WHILE, UNTIL, or SPLIT!"
-              )
+            const {UNTIL, WHILE, IF, SPLIT, BREAK, CONTINUE} = ACTIVITY
+            const kindUntil = kind === UNTIL
+            const kindWhile = kind === WHILE
+            const kindIf = kind === IF
+            const kindSplit = kind === SPLIT
+            const kindBreak = kind === BREAK
+            const kindContinue = kind === CONTINUE
 
-            const {WHILE,UNTIL,SPLIT} = ACTIVITY
-            const kindWhile = kind & WHILE
-            const kindUntil = kind & UNTIL
-            const kindSplit = kind & SPLIT
+            if(kindBreak || kindContinue) {
+              if(!activity.wrapper)
+                throw Sass.new(`Invalid use of control flow outside of context.`)
 
-            if(kindWhile || kindUntil) {
-              const predicate = activity.pred
+              if(await this.#evalPredicate(activity, context)) {
+                if(kindBreak) {
+                  this.#notify.emit("loop.break", parentWrapper)
+                  break
+                }
 
+                if(kindContinue)
+                  cursor = max
+              }
+            } else if(kindIf) {
+              if(await this.#evalPredicate(activity, context))
+                context = await this.#execute(activity, context)
+            } else if(kindWhile || kindUntil) {
+              // Simple if, no loop, only gainz.
               for(;;) {
-
                 if(kindWhile)
-                  if(!await this.#hasPredicate(activity,predicate,context))
+                  if(!await this.#evalPredicate(activity, context))
                     break
 
-                context = await this.#execute(activity,context)
+                let weWereOnABreak = false
+                const breakReceiver = this.#notify.on("loop.break", wrapper => {
+                  if(wrapper.id === actionWrapper.id) {
+                    weWereOnABreak = true
+                  }
+                })
+                context = await this.#execute(activity, context)
+                breakReceiver()
+                if(weWereOnABreak)
+                  break
 
                 if(kindUntil)
-                  if(await this.#hasPredicate(activity,predicate,context))
+                  if(await this.#evalPredicate(activity, context))
                     break
               }
             } else if(kindSplit) {
@@ -130,8 +159,10 @@ export default class ActionRunner extends Piper {
 
               const original = context
               const splitContexts = await splitter.call(
-                activity.action, context
+                activity.action,
+                context
               )
+
               let settled
 
               if(activity.opKind === "ActionBuilder") {
@@ -145,7 +176,6 @@ export default class ActionRunner extends Piper {
                   debug: this.#debug, name: activity.name
                 })
 
-                // pipe() returns settled results with concurrency control
                 settled = await runner.pipe(splitContexts)
               } else {
                 // For plain functions, process each split context
@@ -171,7 +201,8 @@ export default class ActionRunner extends Piper {
       }
     } finally {
       // Execute done callback if registered - always runs, even on error
-      if(actionWrapper.done) {
+      // Only run for top-level pipelines, not nested builders (inside loops)
+      if(actionWrapper.done && !parentWrapper) {
         try {
           context = await actionWrapper.done.call(
             actionWrapper.action, context
@@ -220,11 +251,11 @@ export default class ActionRunner extends Piper {
       if(parallel) {
         return await runner.pipe(context)
       } else {
-        return await runner.run(context)
+        return await runner.run(context, activity.wrapper)
       }
     } else if(opKind === "Function") {
       try {
-        const result = await activity.run(context)
+        const result = await activity.run(context, activity.wrapper)
 
         if(Data.isType(result, "ActionBuilder")) {
           if(activity.action)
@@ -240,7 +271,7 @@ export default class ActionRunner extends Piper {
           if(parallel) {
             return await runner.pipe(context)
           } else {
-            return await runner.run(context)
+            return await runner.run(context, activity.wrapper)
           }
         } else {
           return result
@@ -256,18 +287,17 @@ export default class ActionRunner extends Piper {
   }
 
   /**
-   * Evaluate the predicate for WHILE/UNTIL activity kinds.
+   * Evaluate the predicate for WHILE/UNTIL/IF/BREAK/CONTINUE activity kinds.
    *
    * @param {import("./Activity.js").default} activity Activity currently executing.
-   * @param {(context: unknown) => boolean|Promise<boolean>} predicate Predicate to evaluate.
    * @param {unknown} context Current pipeline context.
-   * @returns {Promise<boolean>} True when the predicate allows another iteration.
+   * @returns {Promise<boolean>} True when the predicate condition is met.
    * @private
    */
-  async #hasPredicate(activity,predicate,context) {
-    Valid.type(predicate, "Function")
+  async #evalPredicate(activity, context) {
+    Valid.type(activity?.pred, "Function")
 
-    return !!(await predicate.call(activity.action, context))
+    return !!(await activity.pred.call(activity.action, context))
   }
 
   toString() {

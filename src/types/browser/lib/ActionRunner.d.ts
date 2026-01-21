@@ -26,13 +26,14 @@ export default class ActionRunner extends Piper {
     /**
      * Executes the configured action pipeline.
      * Builds the ActionWrapper on first run and caches it for subsequent calls.
-     * Supports WHILE, UNTIL, and SPLIT activity kinds.
+     * Supports WHILE, UNTIL, IF, SPLIT, BREAK, and CONTINUE activity kinds.
      *
      * @param {unknown} context - Seed value passed to the first activity.
+     * @param {import("./ActionWrapper.js").default|null} [parentWrapper] - Parent wrapper for BREAK/CONTINUE signaling.
      * @returns {Promise<unknown>} Final value produced by the pipeline.
      * @throws {Sass} When no activities are registered, conflicting activity kinds are used, or execution fails.
      */
-    run(context: unknown): Promise<unknown>;
+    run(context: unknown, parentWrapper?: import("./ActionWrapper.js").default | null): Promise<unknown>;
     #private;
 }
 export type DebugFn = (message: string, level?: number, ...args: Array<unknown>) => void;

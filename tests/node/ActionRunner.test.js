@@ -9,7 +9,7 @@ describe("ActionRunner", () => {
   describe("constructor", () => {
     it("creates runner with ActionBuilder", () => {
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder.do("test", () => {})
         }
       }
@@ -27,7 +27,7 @@ describe("ActionRunner", () => {
 
     it("accepts debug function", () => {
       const debugCalls = []
-      const debug = (msg) => debugCalls.push(msg)
+      const debug = msg => debugCalls.push(msg)
 
       const action = {setup: () => {}}
       const builder = new ActionBuilder(action)
@@ -52,11 +52,11 @@ describe("ActionRunner", () => {
   })
 
   describe("run()", () => {
-    it("executes simple activity", async () => {
+    it("executes simple activity", async() => {
       let executed = false
 
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder.do("test", () => {
             executed = true
           })
@@ -70,16 +70,18 @@ describe("ActionRunner", () => {
       assert.ok(executed)
     })
 
-    it("passes context through activities", async () => {
+    it("passes context through activities", async() => {
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder
-            .do("step1", (ctx) => {
+            .do("step1", ctx => {
               ctx.value = 10
+
               return ctx
             })
-            .do("step2", (ctx) => {
+            .do("step2", ctx => {
               ctx.value = ctx.value * 2
+
               return ctx
             })
         }
@@ -92,11 +94,11 @@ describe("ActionRunner", () => {
       assert.equal(result.value, 20)
     })
 
-    it("executes activities in order", async () => {
+    it("executes activities in order", async() => {
       const order = []
 
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder
             .do("first", () => order.push(1))
             .do("second", () => order.push(2))
@@ -111,9 +113,9 @@ describe("ActionRunner", () => {
       assert.deepEqual(order, [1, 2, 3])
     })
 
-    it("returns final context value", async () => {
+    it("returns final context value", async() => {
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder.do("test", () => ({result: "success"}))
         }
       }
@@ -125,12 +127,13 @@ describe("ActionRunner", () => {
       assert.deepEqual(result, {result: "success"})
     })
 
-    it("handles async activities", async () => {
+    it("handles async activities", async() => {
       const action = {
-        setup: (builder) => {
-          builder.do("test", async (ctx) => {
+        setup: builder => {
+          builder.do("test", async ctx => {
             await new Promise(resolve => setTimeout(resolve, 10))
             ctx.done = true
+
             return ctx
           })
         }
@@ -145,16 +148,18 @@ describe("ActionRunner", () => {
   })
 
   describe("WHILE activities", () => {
-    it("loops while predicate is true", async () => {
+    it("loops while predicate is true", async() => {
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder
-            .do("init", (ctx) => {
+            .do("init", ctx => {
               ctx.count = 0
+
               return ctx
             })
-            .do("loop", ACTIVITY.WHILE, (ctx) => ctx.count < 3, (ctx) => {
+            .do("loop", ACTIVITY.WHILE, ctx => ctx.count < 3, ctx => {
               ctx.count++
+
               return ctx
             })
         }
@@ -167,11 +172,11 @@ describe("ActionRunner", () => {
       assert.equal(result.count, 3)
     })
 
-    it("does not execute when predicate is initially false", async () => {
+    it("does not execute when predicate is initially false", async() => {
       let executed = false
 
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder.do("loop", ACTIVITY.WHILE, () => false, () => {
             executed = true
           })
@@ -185,19 +190,22 @@ describe("ActionRunner", () => {
       assert.equal(executed, false)
     })
 
-    it("handles async predicates", async () => {
+    it("handles async predicates", async() => {
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder
-            .do("init", (ctx) => {
+            .do("init", ctx => {
               ctx.count = 0
+
               return ctx
             })
-            .do("loop", ACTIVITY.WHILE, async (ctx) => {
+            .do("loop", ACTIVITY.WHILE, async ctx => {
               await new Promise(resolve => setTimeout(resolve, 1))
+
               return ctx.count < 2
-            }, (ctx) => {
+            }, ctx => {
               ctx.count++
+
               return ctx
             })
         }
@@ -212,16 +220,18 @@ describe("ActionRunner", () => {
   })
 
   describe("UNTIL activities", () => {
-    it("loops until predicate is true", async () => {
+    it("loops until predicate is true", async() => {
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder
-            .do("init", (ctx) => {
+            .do("init", ctx => {
               ctx.count = 0
+
               return ctx
             })
-            .do("loop", ACTIVITY.UNTIL, (ctx) => ctx.count >= 3, (ctx) => {
+            .do("loop", ACTIVITY.UNTIL, ctx => ctx.count >= 3, ctx => {
               ctx.count++
+
               return ctx
             })
         }
@@ -234,11 +244,11 @@ describe("ActionRunner", () => {
       assert.equal(result.count, 3)
     })
 
-    it("executes at least once", async () => {
+    it("executes at least once", async() => {
       let executeCount = 0
 
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder.do("loop", ACTIVITY.UNTIL, () => true, () => {
             executeCount++
           })
@@ -252,19 +262,22 @@ describe("ActionRunner", () => {
       assert.equal(executeCount, 1)
     })
 
-    it("handles async predicates", async () => {
+    it("handles async predicates", async() => {
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder
-            .do("init", (ctx) => {
+            .do("init", ctx => {
               ctx.count = 0
+
               return ctx
             })
-            .do("loop", ACTIVITY.UNTIL, async (ctx) => {
+            .do("loop", ACTIVITY.UNTIL, async ctx => {
               await new Promise(resolve => setTimeout(resolve, 1))
+
               return ctx.count >= 2
-            }, (ctx) => {
+            }, ctx => {
               ctx.count++
+
               return ctx
             })
         }
@@ -279,27 +292,30 @@ describe("ActionRunner", () => {
   })
 
   describe("SPLIT activities", () => {
-    it("executes SPLIT with plain function", async () => {
+    it("executes SPLIT with plain function", async() => {
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder
-            .do("init", (ctx) => {
+            .do("init", ctx => {
               ctx.items = ["apple", "banana", "cherry"]
+
               return ctx
             })
             .do(
               "parallel",
               ACTIVITY.SPLIT,
-              (ctx) => ctx.items.map(item => ({item})),
+              ctx => ctx.items.map(item => ({item})),
               (original, settledResults) => {
                 // settledResults is from Promise.allSettled
                 original.results = settledResults
                   .filter(r => r.status === "fulfilled")
                   .map(r => r.value.item)
+
                 return original
               },
-              (ctx) => {
+              ctx => {
                 ctx.item = ctx.item.toUpperCase()
+
                 return ctx
               }
             )
@@ -313,37 +329,41 @@ describe("ActionRunner", () => {
       assert.deepEqual(result.results, ["APPLE", "BANANA", "CHERRY"])
     })
 
-    it("executes SPLIT with nested ActionBuilder", async () => {
+    it("executes SPLIT with nested ActionBuilder", async() => {
       const processor = {
-        setup: (builder) => {
+        setup: builder => {
           builder
-            .do("uppercase", (ctx) => {
+            .do("uppercase", ctx => {
               ctx.item = ctx.item.toUpperCase()
+
               return ctx
             })
-            .do("suffix", (ctx) => {
+            .do("suffix", ctx => {
               ctx.item = ctx.item + "!"
+
               return ctx
             })
         }
       }
 
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder
-            .do("init", (ctx) => {
+            .do("init", ctx => {
               ctx.items = ["a", "b", "c"]
+
               return ctx
             })
             .do(
               "parallel",
               ACTIVITY.SPLIT,
-              (ctx) => ctx.items.map(item => ({item})),
+              ctx => ctx.items.map(item => ({item})),
               (original, settledResults) => {
                 // Nested ActionBuilder also returns settled results
                 original.results = settledResults
                   .filter(r => r.status === "fulfilled")
                   .map(r => r.value.item)
+
                 return original
               },
               new ActionBuilder(processor)
@@ -358,31 +378,34 @@ describe("ActionRunner", () => {
       assert.deepEqual(result.results, ["A!", "B!", "C!"])
     })
 
-    it("passes original context to rejoiner", async () => {
+    it("passes original context to rejoiner", async() => {
       let originalSeen = null
 
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder
-            .do("init", (ctx) => {
+            .do("init", ctx => {
               ctx.original = "preserved"
               ctx.items = [1, 2]
+
               return ctx
             })
             .do(
               "parallel",
               ACTIVITY.SPLIT,
-              (ctx) => ctx.items.map(n => ({n})),
+              ctx => ctx.items.map(n => ({n})),
               (original, settledResults) => {
                 originalSeen = original
                 // Extract fulfilled values from settled results
                 original.sum = settledResults
                   .filter(r => r.status === "fulfilled")
                   .reduce((sum, r) => sum + r.value.n, 0)
+
                 return original
               },
-              (ctx) => {
+              ctx => {
                 ctx.n = ctx.n * 2
+
                 return ctx
               }
             )
@@ -397,23 +420,25 @@ describe("ActionRunner", () => {
       assert.equal(result.sum, 6) // (1*2) + (2*2)
     })
 
-    it("handles empty split results", async () => {
+    it("handles empty split results", async() => {
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder
-            .do("init", (ctx) => {
+            .do("init", ctx => {
               ctx.items = []
+
               return ctx
             })
             .do(
               "parallel",
               ACTIVITY.SPLIT,
-              (ctx) => ctx.items.map(item => ({item})),
+              ctx => ctx.items.map(item => ({item})),
               (original, settledResults) => {
                 original.count = settledResults.length
+
                 return original
               },
-              (ctx) => ctx
+              ctx => ctx
             )
         }
       }
@@ -425,28 +450,31 @@ describe("ActionRunner", () => {
       assert.equal(result.count, 0)
     })
 
-    it("handles async operations in SPLIT", async () => {
+    it("handles async operations in SPLIT", async() => {
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder
-            .do("init", (ctx) => {
+            .do("init", ctx => {
               ctx.items = [1, 2, 3]
+
               return ctx
             })
             .do(
               "parallel",
               ACTIVITY.SPLIT,
-              (ctx) => ctx.items.map(n => ({n})),
+              ctx => ctx.items.map(n => ({n})),
               (original, settledResults) => {
                 original.results = settledResults
                   .filter(r => r.status === "fulfilled")
                   .map(r => r.value.n)
+
                 return original
               },
-              async (ctx) => {
+              async ctx => {
                 // Simulate async operation
                 await new Promise(resolve => setTimeout(resolve, 10))
                 ctx.n = ctx.n * 10
+
                 return ctx
               }
             )
@@ -460,18 +488,19 @@ describe("ActionRunner", () => {
       assert.deepEqual(result.results, [10, 20, 30])
     })
 
-    it("handles rejected promises in SPLIT", async () => {
+    it("handles rejected promises in SPLIT", async() => {
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder
-            .do("init", (ctx) => {
+            .do("init", ctx => {
               ctx.items = [1, 2, 3]
+
               return ctx
             })
             .do(
               "parallel",
               ACTIVITY.SPLIT,
-              (ctx) => ctx.items.map(n => ({n})),
+              ctx => ctx.items.map(n => ({n})),
               (original, settledResults) => {
                 // Count fulfilled and rejected
                 original.fulfilled = settledResults.filter(r => r.status === "fulfilled").length
@@ -479,13 +508,16 @@ describe("ActionRunner", () => {
                 original.results = settledResults
                   .filter(r => r.status === "fulfilled")
                   .map(r => r.value.n)
+
                 return original
               },
-              async (ctx) => {
-                if (ctx.n === 2) {
+              async ctx => {
+                if(ctx.n === 2) {
                   throw new Error("Failed on 2")
                 }
+
                 ctx.n = ctx.n * 10
+
                 return ctx
               }
             )
@@ -501,24 +533,25 @@ describe("ActionRunner", () => {
       assert.deepEqual(result.results, [10, 30])
     })
 
-    it("handles mixed fulfilled and rejected results in SPLIT", async () => {
+    it("handles mixed fulfilled and rejected results in SPLIT", async() => {
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder
-            .do("init", (ctx) => {
+            .do("init", ctx => {
               ctx.items = ["a", "b", "c", "d"]
+
               return ctx
             })
             .do(
               "parallel",
               ACTIVITY.SPLIT,
-              (ctx) => ctx.items.map(item => ({item})),
+              ctx => ctx.items.map(item => ({item})),
               (original, settledResults) => {
                 original.successful = []
                 original.failed = []
 
                 settledResults.forEach(result => {
-                  if (result.status === "fulfilled") {
+                  if(result.status === "fulfilled") {
                     original.successful.push(result.value.item)
                   } else {
                     original.failed.push(result.reason.message)
@@ -527,11 +560,13 @@ describe("ActionRunner", () => {
 
                 return original
               },
-              async (ctx) => {
-                if (ctx.item === "b" || ctx.item === "d") {
+              async ctx => {
+                if(ctx.item === "b" || ctx.item === "d") {
                   throw new Error(`Failed: ${ctx.item}`)
                 }
+
                 ctx.item = ctx.item.toUpperCase()
+
                 return ctx
               }
             )
@@ -546,31 +581,34 @@ describe("ActionRunner", () => {
       assert.deepEqual(result.failed, ["Failed: b", "Failed: d"])
     })
 
-    it("handles rejected promises in SPLIT with nested ActionBuilder", async () => {
+    it("handles rejected promises in SPLIT with nested ActionBuilder", async() => {
       const processor = {
-        setup: (builder) => {
+        setup: builder => {
           builder
-            .do("process", (ctx) => {
-              if (ctx.n === 2) {
+            .do("process", ctx => {
+              if(ctx.n === 2) {
                 throw new Error("Nested pipeline failed on 2")
               }
+
               ctx.n = ctx.n * 100
+
               return ctx
             })
         }
       }
 
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder
-            .do("init", (ctx) => {
+            .do("init", ctx => {
               ctx.items = [1, 2, 3]
+
               return ctx
             })
             .do(
               "parallel",
               ACTIVITY.SPLIT,
-              (ctx) => ctx.items.map(n => ({n})),
+              ctx => ctx.items.map(n => ({n})),
               (original, settledResults) => {
                 // Nested ActionBuilder should also return settled results
                 original.fulfilled = settledResults.filter(r => r.status === "fulfilled").length
@@ -578,6 +616,7 @@ describe("ActionRunner", () => {
                 original.results = settledResults
                   .filter(r => r.status === "fulfilled")
                   .map(r => r.value.n)
+
                 return original
               },
               new ActionBuilder(processor)
@@ -596,11 +635,11 @@ describe("ActionRunner", () => {
   })
 
   describe("nested ActionBuilders", () => {
-    it("executes nested builder", async () => {
+    it("executes nested builder", async() => {
       let innerExecuted = false
 
       const innerAction = {
-        setup: (builder) => {
+        setup: builder => {
           builder.do("inner", () => {
             innerExecuted = true
           })
@@ -608,7 +647,7 @@ describe("ActionRunner", () => {
       }
 
       const outerAction = {
-        setup: (builder) => {
+        setup: builder => {
           builder.do("nested", ACTIVITY.WHILE, () => false, new ActionBuilder(innerAction))
         }
       }
@@ -621,24 +660,26 @@ describe("ActionRunner", () => {
       assert.equal(innerExecuted, false)
     })
 
-    it("passes context through nested builders", async () => {
+    it("passes context through nested builders", async() => {
       const innerAction = {
-        setup: (builder) => {
-          builder.do("inner", (ctx) => {
+        setup: builder => {
+          builder.do("inner", ctx => {
             ctx.innerValue = 42
+
             return ctx
           })
         }
       }
 
       const outerAction = {
-        setup: (builder) => {
+        setup: builder => {
           builder
-            .do("outer", (ctx) => {
+            .do("outer", ctx => {
               ctx.outerValue = 10
+
               return ctx
             })
-            .do("nested", ACTIVITY.WHILE, (ctx) => !ctx.innerValue, new ActionBuilder(innerAction))
+            .do("nested", ACTIVITY.WHILE, ctx => !ctx.innerValue, new ActionBuilder(innerAction))
         }
       }
 
@@ -652,9 +693,9 @@ describe("ActionRunner", () => {
   })
 
   describe("error handling", () => {
-    it("throws on activity errors", async () => {
+    it("throws on activity errors", async() => {
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder.do("failing", () => {
             throw new Error("Activity failed")
           })
@@ -670,9 +711,9 @@ describe("ActionRunner", () => {
       )
     })
 
-    it("throws on errors in WHILE activities", async () => {
+    it("throws on errors in WHILE activities", async() => {
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder.do("loop", ACTIVITY.WHILE, () => true, () => {
             throw new Error("Loop error")
           })
@@ -688,9 +729,9 @@ describe("ActionRunner", () => {
       )
     })
 
-    it("throws on errors in UNTIL activities", async () => {
+    it("throws on errors in UNTIL activities", async() => {
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder.do("loop", ACTIVITY.UNTIL, () => false, () => {
             throw new Error("Loop error")
           })
@@ -705,30 +746,15 @@ describe("ActionRunner", () => {
         /Loop error/
       )
     })
-
-    it("validates activity kind combinations", async () => {
-      const action = {
-        setup: (builder) => {
-          builder.do("invalid", ACTIVITY.WHILE | ACTIVITY.UNTIL, () => true, () => {})
-        }
-      }
-
-      const builder = new ActionBuilder(action)
-      const runner = new ActionRunner(builder)
-
-      await assert.rejects(
-        () => runner.run({}),
-        /You can't combine activity kinds/
-      )
-    })
   })
 
   describe("pipe() inherited from Piper", () => {
-    it("processes multiple contexts concurrently", async () => {
+    it("processes multiple contexts concurrently", async() => {
       const action = {
-        setup: (builder) => {
-          builder.do("process", (ctx) => {
+        setup: builder => {
+          builder.do("process", ctx => {
             ctx.processed = true
+
             return ctx
           })
         }
@@ -746,17 +772,18 @@ describe("ActionRunner", () => {
       })
     })
 
-    it("respects maxConcurrent limit", async () => {
+    it("respects maxConcurrent limit", async() => {
       let concurrent = 0
       let maxConcurrent = 0
 
       const action = {
-        setup: (builder) => {
-          builder.do("process", async (ctx) => {
+        setup: builder => {
+          builder.do("process", async ctx => {
             concurrent++
             maxConcurrent = Math.max(maxConcurrent, concurrent)
             await new Promise(resolve => setTimeout(resolve, 10))
             concurrent--
+
             return ctx
           })
         }
@@ -782,7 +809,7 @@ describe("ActionRunner", () => {
   })
 
   describe("activity bound to action", () => {
-    it("calls activity with action as this context", async () => {
+    it("calls activity with action as this context", async() => {
       class TestAction {
         constructor() {
           this.multiplier = 5
@@ -791,6 +818,7 @@ describe("ActionRunner", () => {
         setup(builder) {
           builder.do("test", function(ctx) {
             ctx.result = this.multiplier * 10
+
             return ctx
           })
         }
@@ -803,7 +831,7 @@ describe("ActionRunner", () => {
       assert.equal(result.result, 50)
     })
 
-    it("binds predicate to action context", async () => {
+    it("binds predicate to action context", async() => {
       class TestAction {
         constructor() {
           this.limit = 3
@@ -811,14 +839,16 @@ describe("ActionRunner", () => {
 
         setup(builder) {
           builder
-            .do("init", (ctx) => {
+            .do("init", ctx => {
               ctx.count = 0
+
               return ctx
             })
             .do("loop", ACTIVITY.WHILE, function(ctx) {
               return ctx.count < this.limit
             }, function(ctx) {
               ctx.count++
+
               return ctx
             })
         }
@@ -833,18 +863,20 @@ describe("ActionRunner", () => {
   })
 
   describe("ActionBuilder without parent action in nested context", () => {
-    it("executes ActionBuilder without parent action as nested step", async () => {
+    it("executes ActionBuilder without parent action as nested step", async() => {
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder
-            .do("init", (ctx) => {
+            .do("init", ctx => {
               ctx.value = 5
+
               return ctx
             })
-            .do("nested", ACTIVITY.WHILE, (ctx) => ctx.value < 10,
+            .do("nested", ACTIVITY.WHILE, ctx => ctx.value < 10,
               new ActionBuilder()
-                .do("increment", (ctx) => {
+                .do("increment", ctx => {
                   ctx.value += 1
+
                   return ctx
                 })
             )
@@ -858,27 +890,30 @@ describe("ActionRunner", () => {
       assert.equal(result.value, 10)
     })
 
-    it("executes ActionBuilder without parent in SPLIT activity", async () => {
+    it("executes ActionBuilder without parent in SPLIT activity", async() => {
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder
-            .do("init", (ctx) => {
+            .do("init", ctx => {
               ctx.items = [1, 2, 3]
+
               return ctx
             })
             .do(
               "parallel",
               ACTIVITY.SPLIT,
-              (ctx) => ctx.items.map(n => ({n})),
+              ctx => ctx.items.map(n => ({n})),
               (original, settledResults) => {
                 original.results = settledResults
                   .filter(r => r.status === "fulfilled")
                   .map(r => r.value.n)
+
                 return original
               },
               new ActionBuilder()
-                .do("multiply", (ctx) => {
+                .do("multiply", ctx => {
                   ctx.n = ctx.n * 100
+
                   return ctx
                 })
             )
@@ -892,22 +927,24 @@ describe("ActionRunner", () => {
       assert.deepEqual(result.results, [100, 200, 300])
     })
 
-    it("handles complex nested ActionBuilders without parent actions", async () => {
+    it("handles complex nested ActionBuilders without parent actions", async() => {
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder
-            .do("init", (ctx) => {
+            .do("init", ctx => {
               ctx.batches = [[1, 2], [3, 4]]
+
               return ctx
             })
             .do(
               "process-batches",
               ACTIVITY.SPLIT,
-              (ctx) => ctx.batches.map(batch => ({batch})),
+              ctx => ctx.batches.map(batch => ({batch})),
               (original, settledResults) => {
                 original.allResults = settledResults
                   .filter(r => r.status === "fulfilled")
                   .flatMap(r => r.value.batchResults)
+
                 return original
               },
               // Nested builder without parent that itself contains SPLIT
@@ -915,15 +952,17 @@ describe("ActionRunner", () => {
                 .do(
                   "process-items",
                   ACTIVITY.SPLIT,
-                  (ctx) => ctx.batch.map(n => ({n})),
+                  ctx => ctx.batch.map(n => ({n})),
                   (batchCtx, settledResults) => {
                     batchCtx.batchResults = settledResults
                       .filter(r => r.status === "fulfilled")
                       .map(r => r.value.n)
+
                     return batchCtx
                   },
-                  (itemCtx) => {
+                  itemCtx => {
                     itemCtx.n = itemCtx.n * 10
+
                     return itemCtx
                   }
                 )
