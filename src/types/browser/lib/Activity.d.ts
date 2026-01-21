@@ -9,14 +9,20 @@ export type ACTIVITY = number;
  *
  * @readonly
  * @enum {number}
- * @property {number} WHILE - Execute activity while predicate returns true (2)
- * @property {number} UNTIL - Execute activity until predicate returns true (4)
- * @property {number} SPLIT - Execute activity with split/rejoin pattern for parallel execution (8)
+ * @property {number} WHILE - Execute activity while predicate returns true 1
+ * @property {number} UNTIL - Execute activity until predicate returns true 2
+ * @property {number} SPLIT - Execute activity with split/rejoin pattern for parallel execution 3
+ * @property {number} IF - Execute activity if predicate returns true 4
+ * @property {number} BREAK - Break out of a WHILE/UNTIL if predicate returns true 5
+ * @property {number} CONTINUE - Returns to the top of a WHILE/UNTIL if predicate returns true 6
  */
 export const ACTIVITY: Readonly<{
-    WHILE: number;
-    UNTIL: number;
-    SPLIT: number;
+    WHILE: 1;
+    UNTIL: 2;
+    SPLIT: 3;
+    IF: 4;
+    BREAK: 5;
+    CONTINUE: 6;
 }>;
 export default class Activity {
     /**
@@ -31,8 +37,9 @@ export default class Activity {
      * @param {ActionHooks} [init.hooks] - Optional hooks instance
      * @param {(context: unknown) => unknown} [init.splitter] - Optional splitter function for SPLIT activities
      * @param {(originalContext: unknown, splitResults: unknown) => unknown} [init.rejoiner] - Optional rejoiner function for SPLIT activities
+     * @param {import("./ActionWrapper.js").default} [init.wrapper] - Optional wrapper containing this activity
      */
-    constructor({ action, name, op, kind, pred, hooks, splitter, rejoiner }: {
+    constructor({ action, name, op, kind, pred, hooks, splitter, rejoiner, wrapper }: {
         action: unknown;
         name: string | symbol;
         op: (context: unknown) => unknown | Promise<unknown> | import("./ActionBuilder.js").default;
@@ -41,7 +48,14 @@ export default class Activity {
         hooks?: import("./ActionHooks.js").default | undefined;
         splitter?: ((context: unknown) => unknown) | undefined;
         rejoiner?: ((originalContext: unknown, splitResults: unknown) => unknown) | undefined;
+        wrapper?: import("./ActionWrapper.js").default | undefined;
     });
+    /**
+     * Unique identifier for this activity instance.
+     *
+     * @returns {symbol} Unique symbol identifier
+     */
+    get id(): symbol;
     /**
      * The activity name.
      *
@@ -55,7 +69,7 @@ export default class Activity {
      */
     get kind(): number | null;
     /**
-     * The predicate function for WHILE/UNTIL flows.
+     * The predicate function for WHILE/UNTIL/IF flows.
      *
      * @returns {(context: unknown) => boolean|Promise<boolean>|undefined} - Predicate used to continue/stop loops
      */
@@ -96,6 +110,13 @@ export default class Activity {
      * @returns {unknown} - Bound action instance
      */
     get action(): unknown;
+    /**
+     * Get the ActionWrapper containing this activity.
+     * Used by BREAK/CONTINUE to signal the parent loop.
+     *
+     * @returns {import("./ActionWrapper.js").default|null} The wrapper or null
+     */
+    get wrapper(): import("./ActionWrapper.js").default | null;
     /**
      * Execute the activity with before/after hooks.
      *

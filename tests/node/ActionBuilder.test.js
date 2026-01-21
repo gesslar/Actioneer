@@ -3,13 +3,13 @@
 import {describe, it} from "node:test"
 import assert from "node:assert/strict"
 
-import {ActionBuilder, ActionWrapper, ACTIVITY} from "../../src/index.js"
+import {ActionBuilder, ACTIVITY} from "../../src/index.js"
 
 describe("ActionBuilder", () => {
   describe("constructor", () => {
     it("creates builder with action that has setup", () => {
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder.do("test", () => {})
         }
       }
@@ -34,7 +34,7 @@ describe("ActionBuilder", () => {
 
     it("accepts debug function", () => {
       const debugCalled = []
-      const debug = (msg) => debugCalled.push(msg)
+      const debug = msg => debugCalled.push(msg)
 
       const action = {
         setup: () => {}
@@ -75,8 +75,8 @@ describe("ActionBuilder", () => {
   describe("do()", () => {
     it("registers simple activity", () => {
       const action = {
-        setup: (builder) => {
-          builder.do("step1", (ctx) => ctx)
+        setup: builder => {
+          builder.do("step1", ctx => ctx)
         }
       }
 
@@ -97,9 +97,10 @@ describe("ActionBuilder", () => {
 
     it("registers activity with WHILE loop", () => {
       const action = {
-        setup: (builder) => {
-          builder.do("loop", ACTIVITY.WHILE, (ctx) => ctx.count < 5, (ctx) => {
+        setup: builder => {
+          builder.do("loop", ACTIVITY.WHILE, ctx => ctx.count < 5, ctx => {
             ctx.count++
+
             return ctx
           })
         }
@@ -111,9 +112,10 @@ describe("ActionBuilder", () => {
 
     it("registers activity with UNTIL loop", () => {
       const action = {
-        setup: (builder) => {
-          builder.do("loop", ACTIVITY.UNTIL, (ctx) => ctx.done, (ctx) => {
+        setup: builder => {
+          builder.do("loop", ACTIVITY.UNTIL, ctx => ctx.done, ctx => {
             ctx.done = true
+
             return ctx
           })
         }
@@ -125,13 +127,13 @@ describe("ActionBuilder", () => {
 
     it("registers activity with SPLIT", () => {
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder.do(
             "parallel",
             ACTIVITY.SPLIT,
-            (ctx) => [ctx], // splitter
-            (ctx) => ctx,   // rejoiner
-            (ctx) => ctx    // operation
+            ctx => [ctx], // splitter
+            ctx => ctx,   // rejoiner
+            ctx => ctx    // operation
           )
         }
       }
@@ -179,18 +181,18 @@ describe("ActionBuilder", () => {
 
     it("allows ActionBuilder as operation for SPLIT activities", () => {
       const innerAction = {
-        setup: (builder) => {
+        setup: builder => {
           builder.do("inner", () => {})
         }
       }
 
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder.do(
             "parallel",
             ACTIVITY.SPLIT,
-            (ctx) => [ctx],
-            (ctx) => ctx,
+            ctx => [ctx],
+            ctx => ctx,
             new ActionBuilder(innerAction)
           )
         }
@@ -220,7 +222,7 @@ describe("ActionBuilder", () => {
       const builder = new ActionBuilder(action)
 
       assert.throws(
-        () => builder.do("test", "arg1", "arg2"),
+        () => builder.do("test", 1, "arg1", "arg2", "arg3", "arg4", "arg5"),
         /Invalid number of arguments/
       )
     })
@@ -254,13 +256,13 @@ describe("ActionBuilder", () => {
 
     it("allows ActionBuilder as operation", () => {
       const innerAction = {
-        setup: (builder) => {
+        setup: builder => {
           builder.do("inner", () => {})
         }
       }
 
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder.do("nested", ACTIVITY.WHILE, () => false, new ActionBuilder(innerAction))
         }
       }
@@ -282,7 +284,7 @@ describe("ActionBuilder", () => {
   describe("withHooksFile()", () => {
     it("configures hooks from file", () => {
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder
             .withHooksFile("./hooks.js", "MyHooks")
             .do("test", () => {})
@@ -322,7 +324,7 @@ describe("ActionBuilder", () => {
       }
 
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder
             .withHooks(hooks)
             .do("test", () => {})
@@ -378,9 +380,9 @@ describe("ActionBuilder", () => {
   })
 
   describe("build()", () => {
-    it("returns ActionWrapper instance", async () => {
+    it("returns ActionWrapper instance", async() => {
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder.do("test", () => {})
         }
       }
@@ -392,11 +394,11 @@ describe("ActionBuilder", () => {
       assert.ok(wrapper.constructor.name === "ActionWrapper")
     })
 
-    it("calls action.setup during build", async () => {
+    it("calls action.setup during build", async() => {
       let setupCalled = false
 
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           setupCalled = true
           builder.do("test", () => {})
         }
@@ -408,11 +410,11 @@ describe("ActionBuilder", () => {
       assert.ok(setupCalled)
     })
 
-    it("only calls setup once even with multiple builds", async () => {
+    it("only calls setup once even with multiple builds", async() => {
       let setupCallCount = 0
 
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           setupCallCount++
           builder.do("test", () => {})
         }
@@ -425,9 +427,9 @@ describe("ActionBuilder", () => {
       assert.equal(setupCallCount, 1)
     })
 
-    it("assigns tag to action during build", async () => {
+    it("assigns tag to action during build", async() => {
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder.do("test", () => {})
         }
       }
@@ -439,9 +441,9 @@ describe("ActionBuilder", () => {
       assert.ok(action.tag)
     })
 
-    it("builds wrapper with registered activities", async () => {
+    it("builds wrapper with registered activities", async() => {
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder
             .do("step1", () => {})
             .do("step2", () => {})
@@ -474,7 +476,7 @@ describe("ActionBuilder", () => {
   describe("fluent builder pattern", () => {
     it("supports chaining multiple operations", () => {
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           const result = builder
             .do("step1", () => {})
             .do("step2", () => {})
@@ -490,7 +492,7 @@ describe("ActionBuilder", () => {
 
     it("supports mixing activities and hooks", () => {
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder
             .withHooks({})
             .do("step1", () => {})
@@ -504,14 +506,16 @@ describe("ActionBuilder", () => {
   })
 
   describe("ActionBuilder without parent action", () => {
-    it("creates builder without action and registers activities", async () => {
+    it("creates builder without action and registers activities", async() => {
       const builder = new ActionBuilder()
-        .do("step1", (ctx) => {
+        .do("step1", ctx => {
           ctx.count = 1
+
           return ctx
         })
-        .do("step2", (ctx) => {
+        .do("step2", ctx => {
           ctx.count += 1
+
           return ctx
         })
 
@@ -527,23 +531,25 @@ describe("ActionBuilder", () => {
       assert.deepEqual(activities, ["step1", "step2"])
     })
 
-    it("can be used as nested builder in SPLIT activity", async () => {
+    it("can be used as nested builder in SPLIT activity", async() => {
       const action = {
-        setup: (builder) => {
+        setup: builder => {
           builder.do(
             "parallel",
             ACTIVITY.SPLIT,
-            (ctx) => [{n: 1}, {n: 2}],
+            _ctx => [{n: 1}, {n: 2}],
             (original, settled) => {
               original.results = settled
                 .filter(r => r.status === "fulfilled")
                 .map(r => r.value.n)
+
               return original
             },
             // Nested builder without parent action
             new ActionBuilder()
-              .do("multiply", (ctx) => {
+              .do("multiply", ctx => {
                 ctx.n = ctx.n * 10
+
                 return ctx
               })
           )
@@ -556,16 +562,16 @@ describe("ActionBuilder", () => {
       assert.ok(builder)
     })
 
-    it("generates unique tag for builder without action", async () => {
+    it("generates unique tag for builder without action", async() => {
       const builder = new ActionBuilder()
 
       assert.ok(builder.tag)
       assert.equal(typeof builder.tag, "symbol")
     })
 
-    it("can register activities and build multiple times", async () => {
+    it("can register activities and build multiple times", async() => {
       const builder = new ActionBuilder()
-        .do("step", (ctx) => ctx)
+        .do("step", ctx => ctx)
 
       const wrapper1 = await builder.build()
       const wrapper2 = await builder.build()

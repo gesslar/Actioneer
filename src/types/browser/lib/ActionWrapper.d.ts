@@ -19,22 +19,35 @@ export default class ActionWrapper {
      *
      * @param {{activities: Map<string|symbol, WrappedActivityConfig>, debug: (message: string, level?: number, ...args: Array<unknown>) => void}} init Builder payload containing activities + logger.
      */
-    constructor({ activities, hooks, debug, done: doneCallback }: {
+    constructor({ activities, hooks, debug, done: doneCallback, action }: {
         activities: Map<string | symbol, WrappedActivityConfig>;
         debug: (message: string, level?: number, ...args: Array<unknown>) => void;
     });
     /**
+     * Unique identifier for this wrapper instance.
+     * Used by BREAK/CONTINUE to match events to the correct loop.
+     *
+     * @returns {symbol} Unique symbol identifier
+     */
+    get id(): symbol;
+    /**
      * Iterator over the registered activities.
      *
-     * @returns {ActivityIterator} Lazy iterator yielding Activity instances.
+     * @returns {IterableIterator<Activity>} Iterator yielding Activity instances.
      */
-    get activities(): ActivityIterator;
+    get activities(): IterableIterator<Activity>;
     /**
      * Get the done callback if registered.
      *
      * @returns {((context: unknown) => unknown|Promise<unknown>)|null} Done callback or null.
      */
     get done(): ((context: unknown) => unknown | Promise<unknown>) | null;
+    /**
+     * Get the action instance.
+     *
+     * @returns {unknown|null} Action instance or null.
+     */
+    get action(): unknown | null;
     #private;
 }
 export type WrappedActivityConfig = {

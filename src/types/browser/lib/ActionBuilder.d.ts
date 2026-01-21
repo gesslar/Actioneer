@@ -58,9 +58,10 @@ export default class ActionBuilder {
      * Register an activity that the runner can execute.
      *
      * Overloads:
-     * - do(name, op)
-     * - do(name, kind, pred, opOrWrapper)
-     * - do(name, kind, splitter, rejoiner, opOrWrapper)
+     * - do(name, op) - Simple once-off activity
+     * - do(name, kind, pred) - BREAK/CONTINUE control flow (no op, just predicate)
+     * - do(name, kind, pred, opOrWrapper) - WHILE/UNTIL/IF with predicate and operation
+     * - do(name, kind, splitter, rejoiner, opOrWrapper) - SPLIT with parallel execution
      *
      * @overload
      * @param {string|symbol} name Activity name
@@ -71,22 +72,30 @@ export default class ActionBuilder {
     /**
      * @overload
      * @param {string|symbol} name Activity name
-     * @param {number} kind Kind bitfield from {@link ActivityFlags}.
-     * @param {(context: unknown) => boolean|Promise<boolean>} pred Predicate executed before/after the op.
-     * @param {ActionFunction|import("./ActionWrapper.js").default} op Operation or nested wrapper to execute.
+     * @param {number} kind ACTIVITY.BREAK or ACTIVITY.CONTINUE flag.
+     * @param {(context: unknown) => boolean|Promise<boolean>} pred Predicate to evaluate for control flow.
      * @returns {ActionBuilder}
      */
-    do(name: string | symbol, kind: number, pred: (context: unknown) => boolean | Promise<boolean>, op: ActionFunction | import("./ActionWrapper.js").default): ActionBuilder;
+    do(name: string | symbol, kind: number, pred: (context: unknown) => boolean | Promise<boolean>): ActionBuilder;
+    /**
+     * @overload
+     * @param {string|symbol} name Activity name
+     * @param {number} kind Activity kind (WHILE, UNTIL, or IF) from {@link ActivityFlags}.
+     * @param {(context: unknown) => boolean|Promise<boolean>} pred Predicate executed before/after the op.
+     * @param {ActionFunction|ActionBuilder} op Operation or nested builder to execute.
+     * @returns {ActionBuilder}
+     */
+    do(name: string | symbol, kind: number, pred: (context: unknown) => boolean | Promise<boolean>, op: ActionFunction | ActionBuilder): ActionBuilder;
     /**
      * @overload
      * @param {string|symbol} name Activity name
      * @param {number} kind ACTIVITY.SPLIT flag.
      * @param {(context: unknown) => unknown} splitter Splitter function for SPLIT mode.
      * @param {(originalContext: unknown, splitResults: unknown) => unknown} rejoiner Rejoiner function for SPLIT mode.
-     * @param {ActionFunction|import("./ActionWrapper.js").default} op Operation or nested wrapper to execute.
+     * @param {ActionFunction|ActionBuilder} op Operation or nested builder to execute.
      * @returns {ActionBuilder}
      */
-    do(name: string | symbol, kind: number, splitter: (context: unknown) => unknown, rejoiner: (originalContext: unknown, splitResults: unknown) => unknown, op: ActionFunction | import("./ActionWrapper.js").default): ActionBuilder;
+    do(name: string | symbol, kind: number, splitter: (context: unknown) => unknown, rejoiner: (originalContext: unknown, splitResults: unknown) => unknown, op: ActionFunction | ActionBuilder): ActionBuilder;
     /**
      * Configure hooks to be loaded from a file when the action is built.
      *

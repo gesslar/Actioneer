@@ -24,6 +24,7 @@ export default class ActionWrapper {
    * @type {Map<string|symbol, WrappedActivityConfig>}
    */
   #activities = new Map()
+
   /**
    * Logger invoked for wrapper lifecycle events.
    *
@@ -31,11 +32,14 @@ export default class ActionWrapper {
    */
   #debug = () => {}
 
+  /** @type {import("./ActionHooks.js").default|null} */
   #hooks = null
-
+  /** @type {((context: unknown) => unknown|Promise<unknown>)|null} */
   #done = null
-
+  /** @type {unknown} */
   #action = null
+  /** @type {symbol} */
+  #id = Symbol(performance.now())
 
   /**
    * Create a wrapper from the builder payload.
@@ -47,7 +51,18 @@ export default class ActionWrapper {
     this.#hooks = hooks
     this.#done = doneCallback
     this.#action = action
-    this.#activities = activities
+
+    for(const [key, value] of activities) {
+      this.#activities.set(
+        key,
+        new Activity({
+          ...value,
+          hooks: this.#hooks,
+          wrapper: this
+        })
+      )
+    }
+
     this.#debug(
       "Instantiating ActionWrapper with %o activities.",
       2,
@@ -55,18 +70,23 @@ export default class ActionWrapper {
     )
   }
 
-  *#_activities() {
-    for(const [,activity] of this.#activities)
-      yield new Activity({...activity, hooks: this.#hooks})
+  /**
+   * Unique identifier for this wrapper instance.
+   * Used by BREAK/CONTINUE to match events to the correct loop.
+   *
+   * @returns {symbol} Unique symbol identifier
+   */
+  get id() {
+    return this.#id
   }
 
   /**
    * Iterator over the registered activities.
    *
-   * @returns {ActivityIterator} Lazy iterator yielding Activity instances.
+   * @returns {IterableIterator<Activity>} Iterator yielding Activity instances.
    */
   get activities() {
-    return this.#_activities()
+    return this.#activities.values()
   }
 
   /**

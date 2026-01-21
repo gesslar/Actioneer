@@ -10,19 +10,19 @@ describe("Activity", () => {
     it("exports WHILE flag", () => {
       assert.ok(ACTIVITY.WHILE)
       assert.equal(typeof ACTIVITY.WHILE, "number")
-      assert.equal(ACTIVITY.WHILE, 1 << 1)
+      assert.equal(ACTIVITY.WHILE, 1)
     })
 
     it("exports UNTIL flag", () => {
       assert.ok(ACTIVITY.UNTIL)
       assert.equal(typeof ACTIVITY.UNTIL, "number")
-      assert.equal(ACTIVITY.UNTIL, 1 << 2)
+      assert.equal(ACTIVITY.UNTIL, 2)
     })
 
     it("exports SPLIT flag", () => {
       assert.ok(ACTIVITY.SPLIT)
       assert.equal(typeof ACTIVITY.SPLIT, "number")
-      assert.equal(ACTIVITY.SPLIT, 1 << 3)
+      assert.equal(ACTIVITY.SPLIT, 3)
     })
 
     it("flags are unique bit values", () => {
@@ -203,10 +203,11 @@ describe("Activity", () => {
   })
 
   describe("run()", () => {
-    it("executes operation with context", async () => {
+    it("executes operation with context", async() => {
       const context = {value: 10}
-      const op = (ctx) => {
+      const op = ctx => {
         ctx.value = ctx.value * 2
+
         return ctx
       }
 
@@ -220,7 +221,7 @@ describe("Activity", () => {
       assert.equal(result.value, 20)
     })
 
-    it("calls operation with bound action as this", async () => {
+    it("calls operation with bound action as this", async() => {
       const action = {multiplier: 3}
       const context = {value: 10}
 
@@ -229,6 +230,7 @@ describe("Activity", () => {
         name: "test",
         op: function(ctx) {
           ctx.value = ctx.value * this.multiplier
+
           return ctx
         }
       })
@@ -237,12 +239,13 @@ describe("Activity", () => {
       assert.equal(result.value, 30)
     })
 
-    it("handles async operations", async () => {
+    it("handles async operations", async() => {
       const activity = new Activity({
         action: null,
         name: "test",
-        op: async (ctx) => {
+        op: async ctx => {
           await new Promise(resolve => setTimeout(resolve, 10))
+
           return {completed: true}
         }
       })
@@ -251,20 +254,24 @@ describe("Activity", () => {
       assert.ok(result.completed)
     })
 
-    it("calls before hook before operation", async () => {
+    it("calls before hook before operation", async() => {
       const executionOrder = []
       const hooks = {
-        callHook: async (event, name, ctx) => {
-          if(event === "before") executionOrder.push("before")
-          if(event === "after") executionOrder.push("after")
+        callHook: async(event, name, ctx) => {
+          if(event === "before")
+            executionOrder.push("before")
+
+          if(event === "after")
+            executionOrder.push("after")
         }
       }
 
       const activity = new Activity({
         action: null,
         name: "test",
-        op: (ctx) => {
+        op: ctx => {
           executionOrder.push("operation")
+
           return ctx
         },
         hooks
@@ -274,7 +281,7 @@ describe("Activity", () => {
       assert.deepEqual(executionOrder, ["before", "operation", "after"])
     })
 
-    it("returns result from operation", async () => {
+    it("returns result from operation", async() => {
       const activity = new Activity({
         action: null,
         name: "test",
