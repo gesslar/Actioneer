@@ -5,7 +5,7 @@
     "name": "gesslar",
     "url": "https://gesslar.dev"
   },
-  "version": "2.1.0",
+  "version": "2.2.0",
   "license": "Unlicense",
   "homepage": "https://github.com/gesslar/toolkit#readme",
   "repository": {
@@ -22,7 +22,7 @@
     "composition",
     "lasagna"
   ],
-  "packageManager": "pnpm@10.28.0",
+  "packageManager": "pnpm@10.28.1",
   "main": "./src/index.js",
   "type": "module",
   "exports": {
@@ -64,10 +64,10 @@
     "major": "pnpm version major"
   },
   "dependencies": {
-    "@gesslar/toolkit": "^3.23.0"
+    "@gesslar/toolkit": "^3.24.0"
   },
   "devDependencies": {
-    "@gesslar/uglier": "^1.1.0",
+    "@gesslar/uglier": "^1.2.0",
     "eslint": "^9.39.2",
     "typescript": "^5.9.3"
   }
