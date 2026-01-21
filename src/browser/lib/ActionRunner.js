@@ -109,7 +109,7 @@ export default class ActionRunner extends Piper {
             const kindContinue = kind === CONTINUE
 
             if(kindBreak || kindContinue) {
-              if(!activity.wrapper)
+              if(!parentWrapper)
                 throw Sass.new(`Invalid use of control flow outside of context.`)
 
               if(await this.#evalPredicate(activity, context)) {

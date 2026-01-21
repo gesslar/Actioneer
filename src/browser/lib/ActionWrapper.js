@@ -83,7 +83,7 @@ export default class ActionWrapper {
   /**
    * Iterator over the registered activities.
    *
-   * @returns {IterableIterator<Activity>} Iterator yielding Activity instances.
+   * @returns {Iterator<Activity>} Iterator yielding Activity instances.
    */
   get activities() {
     return this.#activities.values()
