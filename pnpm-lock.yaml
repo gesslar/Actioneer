@@ -10,7 +10,7 @@ importers:
     dependencies:
       '@gesslar/toolkit':
         specifier: ^3.24.0
-        version: 3.24.0(eslint@9.39.2)
+        version: 3.25.0(eslint@9.39.2)
     devDependencies:
       '@gesslar/uglier':
         specifier: ^1.2.0
@@ -81,9 +81,9 @@ packages:
     engines: {node: '>=22'}
     hasBin: true
 
-  '@gesslar/toolkit@3.24.0':
-    resolution: {integrity: sha512-8G4s7Sds5cdu023ueQqLVG/tg1mNNXRn0Eu3HuNbnMYVJg4DlIILvl0xuoLNAc1LdjAxJfgD0hdHM8DuctuKMA==}
-    engines: {node: '>=22'}
+  '@gesslar/toolkit@3.25.0':
+    resolution: {integrity: sha512-P9iTu1EOk4EkS8aE0JVCbzVmjPlDB8F2cg2oR53anqsCv2F4QvDlDOwmzlli7hta046sFHzfvo+FYx4vnHWwQw==}
+    engines: {node: '>=24.13.0'}
 
   '@gesslar/uglier@1.2.0':
     resolution: {integrity: sha512-YRiaQDXJRQ8tzMCMvejC2k23tGGFvmGshKK19v/0f0zavXGnPYDLx9ILm1FY9GtjyxHOh8diP8P7Xp0eWv8Dow==}
@@ -574,7 +574,7 @@ snapshots:
 
   '@gesslar/colours@0.8.0': {}
 
-  '@gesslar/toolkit@3.24.0(eslint@9.39.2)':
+  '@gesslar/toolkit@3.25.0(eslint@9.39.2)':
     dependencies:
       '@eslint/js': 9.39.2
       '@gesslar/colours': 0.8.0
@@ -590,7 +590,7 @@ snapshots:
   '@gesslar/uglier@1.2.0(eslint@9.39.2)':
     dependencies:
       '@gesslar/colours': 0.8.0
-      '@gesslar/toolkit': 3.24.0(eslint@9.39.2)
+      '@gesslar/toolkit': 3.25.0(eslint@9.39.2)
       '@skarab/detect-package-manager': 1.0.0
       '@stylistic/eslint-plugin': 5.7.0(eslint@9.39.2)
       eslint: 9.39.2
