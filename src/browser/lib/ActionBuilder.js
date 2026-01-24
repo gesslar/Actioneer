@@ -4,36 +4,29 @@ import ActionWrapper from "./ActionWrapper.js"
 import ActionHooks from "./ActionHooks.js"
 import {ACTIVITY} from "./Activity.js"
 
-/** @typedef {import("./ActionRunner.js").default} ActionRunner */
-/** @typedef {typeof import("./Activity.js").ACTIVITY} ActivityFlags */
-
 /**
+ * Type imports
+ *
+ * @import {default as ActionRunner} from "./ActionRunner.js"
+ *
  * @typedef {(message: string, level?: number, ...args: Array<unknown>) => void} DebugFn
- */
-
-/**
+ *
  * @typedef {object} ActionBuilderAction
- * @property {(builder: ActionBuilder) => void} setup Function invoked during {@link ActionBuilder#build} to register activities.
- * @property {symbol} [tag] Optional tag to reuse when reconstructing builders.
- */
-
-/**
+ * @property {(builder: ActionBuilder) => void} setup - Function invoked during {@link ActionBuilder} to register activities.
+ * @property {symbol} [tag] - Optional tag to reuse when reconstructing builders.
+ *
  * @typedef {object} ActionBuilderConfig
- * @property {symbol} [tag] Optional tag for the builder instance.
- * @property {DebugFn} [debug] Logger used by the pipeline internals.
- */
-
-/**
+ * @property {symbol} [tag] - Optional tag for the builder instance.
+ * @property {DebugFn} [debug] - Logger used by the pipeline internals.
+ *
  * @typedef {object} ActivityDefinition
- * @property {ActionBuilderAction|null} action Parent action instance when available.
- * @property {DebugFn|null} debug Logger function.
- * @property {string|symbol} name Activity identifier.
- * @property {ActionFunction|import("./ActionWrapper.js").default} op Operation to execute.
- * @property {number} [kind] Optional kind flags from {@link ActivityFlags}.
- * @property {(context: unknown) => boolean|Promise<boolean>} [pred] Loop predicate.
- */
-
-/**
+ * @property {ActionBuilderAction|null} action - Parent action instance when available.
+ * @property {DebugFn|null} debug - Logger function.
+ * @property {string|symbol} name - Activity identifier.
+ * @property {ActionFunction|import("./ActionWrapper.js").default} op - Operation to execute.
+ * @property {number} [kind] - Optional kind flags from {@link ACTIVITY}.
+ * @property {(context: unknown) => boolean|Promise<boolean>} [pred] - Loop predicate.
+ *
  * @typedef {(context: unknown) => unknown|Promise<unknown>} ActionFunction
  */
 
@@ -58,28 +51,28 @@ import {ACTIVITY} from "./Activity.js"
  * @class ActionBuilder
  */
 export default class ActionBuilder {
-  /** @type {ActionBuilderAction|null} */
+  /** @type {ActionBuilderAction?} */
   #action = null
   /** @type {Map<string|symbol, ActivityDefinition>} */
   #activities = new Map([])
-  /** @type {DebugFn|null} */
+  /** @type {DebugFn?} */
   #debug = null
-  /** @type {symbol|null} */
+  /** @type {symbol?} */
   #tag = null
-  /** @type {string|null} */
+  /** @type {string?} */
   #hooksFile = null
-  /** @type {string|null} */
+  /** @type {string?} */
   #hooksKind = null
-  /** @type {import("./ActionHooks.js").default|null} */
+  /** @type {ActionHooks?} */
   #hooks = null
-  /** @type {ActionFunction|null} */
+  /** @type {ActionFunction?} */
   #done = null
 
   /**
    * Creates a new ActionBuilder instance with the provided action callback.
    *
-   * @param {ActionBuilderAction} [action] Base action invoked by the runner when a block satisfies the configured structure.
-   * @param {ActionBuilderConfig} [config] Options
+   * @param {ActionBuilderAction} [action] - Base action invoked by the runner when a block satisfies the configured structure.
+   * @param {ActionBuilderConfig} [config] - Options
    */
   constructor(
     action,
@@ -110,44 +103,44 @@ export default class ActionBuilder {
    * - do(name, kind, splitter, rejoiner, opOrWrapper) - SPLIT with parallel execution
    *
    * @overload
-   * @param {string|symbol} name Activity name
-   * @param {ActionFunction} op Operation to execute once.
+   * @param {string|symbol} name - Activity name
+   * @param {ActionFunction} op - Operation to execute once.
    * @returns {ActionBuilder}
    */
 
   /**
    * @overload
-   * @param {string|symbol} name Activity name
-   * @param {number} kind ACTIVITY.BREAK or ACTIVITY.CONTINUE flag.
-   * @param {(context: unknown) => boolean|Promise<boolean>} pred Predicate to evaluate for control flow.
+   * @param {string|symbol} name - Activity name
+   * @param {number} kind - ACTIVITY.BREAK or ACTIVITY.CONTINUE flag.
+   * @param {(context: unknown) => boolean|Promise<boolean>} pred - Predicate to evaluate for control flow.
    * @returns {ActionBuilder}
    */
 
   /**
    * @overload
-   * @param {string|symbol} name Activity name
-   * @param {number} kind Activity kind (WHILE, UNTIL, or IF) from {@link ActivityFlags}.
-   * @param {(context: unknown) => boolean|Promise<boolean>} pred Predicate executed before/after the op.
-   * @param {ActionFunction|ActionBuilder} op Operation or nested builder to execute.
+   * @param {string|symbol} name - Activity name
+   * @param {number} kind - Activity kind (WHILE, UNTIL, or IF) from {@link ACTIVITY}.
+   * @param {(context: unknown) => boolean|Promise<boolean>} pred - Predicate executed before/after the op.
+   * @param {ActionFunction|ActionBuilder} op - Operation or nested builder to execute.
    * @returns {ActionBuilder}
    */
 
   /**
    * @overload
-   * @param {string|symbol} name Activity name
-   * @param {number} kind ACTIVITY.SPLIT flag.
-   * @param {(context: unknown) => unknown} splitter Splitter function for SPLIT mode.
-   * @param {(originalContext: unknown, splitResults: unknown) => unknown} rejoiner Rejoiner function for SPLIT mode.
-   * @param {ActionFunction|ActionBuilder} op Operation or nested builder to execute.
+   * @param {string|symbol} name - Activity name
+   * @param {number} kind - ACTIVITY.SPLIT flag.
+   * @param {(context: unknown) => unknown} splitter - Splitter function for SPLIT mode.
+   * @param {(originalContext: unknown, splitResults: unknown) => unknown} rejoiner - Rejoiner function for SPLIT mode.
+   * @param {ActionFunction|ActionBuilder} op - Operation or nested builder to execute.
    * @returns {ActionBuilder}
    */
 
   /**
    * Handles runtime dispatch across the documented overloads.
    *
-   * @param {string|symbol} name Activity name
-   * @param {...unknown} args See overloads
-   * @returns {ActionBuilder} The builder instance for chaining
+   * @param {string|symbol} name - Activity name
+   * @param {...unknown} args - See overloads
+   * @returns {ActionBuilder} - The builder instance for chaining
    */
   do(name, ...args) {
     this.#dupeActivityCheck(name)
@@ -209,9 +202,9 @@ export default class ActionBuilder {
   /**
    * Configure hooks to be loaded from a file when the action is built.
    *
-   * @param {string} hooksFile Path to the hooks module file.
-   * @param {string} hooksKind Name of the exported hooks class to instantiate.
-   * @returns {ActionBuilder} The builder instance for chaining.
+   * @param {string} hooksFile - Path to the hooks module file.
+   * @param {string} hooksKind - Name of the exported hooks class to instantiate.
+   * @returns {ActionBuilder} - The builder instance for chaining.
    * @throws {Sass} If hooks have already been configured.
    */
   withHooksFile(hooksFile, hooksKind) {
@@ -228,8 +221,8 @@ export default class ActionBuilder {
   /**
    * Configure hooks using a pre-instantiated hooks object.
    *
-   * @param {import("./ActionHooks.js").default} hooks An already-instantiated hooks instance.
-   * @returns {ActionBuilder} The builder instance for chaining.
+   * @param {ActionHooks} hooks - An already-instantiated hooks instance.
+   * @returns {ActionBuilder} - The builder instance for chaining.
    * @throws {Sass} If hooks have already been configured with a different instance.
    */
   withHooks(hooks) {
@@ -251,7 +244,7 @@ export default class ActionBuilder {
    * Configure the action instance if not already set.
    * Used to propagate parent action context to nested builders.
    *
-   * @param {ActionBuilderAction} action The action instance to inherit.
+   * @param {ActionBuilderAction} action - The action instance to inherit.
    * @returns {ActionBuilder} The builder instance for chaining.
    */
   withAction(action) {
@@ -271,7 +264,7 @@ export default class ActionBuilder {
   /**
    * Register a callback to be executed after all activities complete.
    *
-   * @param {ActionFunction} callback Function to execute at the end of the pipeline.
+   * @param {ActionFunction} callback - Function to execute at the end of the pipeline.
    * @returns {ActionBuilder} The builder instance for chaining.
    */
   done(callback) {
@@ -285,7 +278,7 @@ export default class ActionBuilder {
    * Validates that an activity name has not been reused.
    *
    * @private
-   * @param {string | symbol} name Activity identifier.
+   * @param {string|symbol} name Activity identifier.
    */
   #dupeActivityCheck(name) {
     Valid.assert(
@@ -298,9 +291,9 @@ export default class ActionBuilder {
    * Finalises the builder and returns a payload that can be consumed by the
    * runner.
    *
-   * @returns {Promise<import("./ActionWrapper.js").default>} Payload consumed by the {@link ActionRunner} constructor.
+   * @returns {Promise<ActionWrapper>} Payload consumed by the {@link ActionRunner} constructor.
    */
-  async build() {
+  async build(runner) {
     const action = this.#action
 
     if(action && !action.tag) {
@@ -308,6 +301,18 @@ export default class ActionBuilder {
 
       await Promise.resolve(action.setup.call(action, this))
     }
+
+    // Inject a method to the action for emission, but only if it's undefined.
+    if(Data.isType(action.emit, "Undefined"))
+      action.emit = reason => runner.emit(reason)
+
+    // Inject a method to the action for onission, but only if it's undefined.
+    if(Data.isType(action.on, "Undefined"))
+      action.on = (event, cb) => runner.on(event, cb)
+
+    // Inject a method to the action for offission, but only if it's undefined.
+    if(Data.isType(action.off, "Undefined"))
+      action.off = (event, cb) => runner.off(event, cb)
 
     // All children in a branch also get the same hooks.
     const hooks = await this.#getHooks()
@@ -318,6 +323,7 @@ export default class ActionBuilder {
       hooks,
       done: this.#done,
       action: this.#action,
+      runner: runner,
     })
   }
 

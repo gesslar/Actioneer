@@ -1,6 +1,13 @@
 import Activity from "./Activity.js"
 
 /**
+ * Type imports
+ *
+ * @import {default as ActionHooks} from "./ActionHooks.js"
+ * @import {default as ActionRunner} from "./ActionRunner.js"
+ */
+
+/**
  * @typedef {object} WrappedActivityConfig
  * @property {string|symbol} name Activity identifier used by hooks/logs.
  * @property {(context: unknown) => unknown|Promise<unknown>|ActionWrapper} op Operation or nested wrapper to execute.
@@ -8,10 +15,6 @@ import Activity from "./Activity.js"
  * @property {(context: unknown) => boolean|Promise<boolean>} [pred] Predicate tied to WHILE/UNTIL semantics.
  * @property {unknown} [action] Parent action instance supplied when invoking the op.
  * @property {(message: string, level?: number, ...args: Array<unknown>) => void} [debug] Optional logger reference.
- */
-
-/**
- * @typedef {import("@gesslar/toolkit").Generator<Activity, void, unknown>} ActivityIterator
  */
 
 /**
@@ -32,7 +35,7 @@ export default class ActionWrapper {
    */
   #debug = () => {}
 
-  /** @type {import("./ActionHooks.js").default|null} */
+  /** @type {ActionHooks} */
   #hooks = null
   /** @type {((context: unknown) => unknown|Promise<unknown>)|null} */
   #done = null
@@ -40,6 +43,8 @@ export default class ActionWrapper {
   #action = null
   /** @type {symbol} */
   #id = Symbol(performance.now())
+  /** @type {ActionRunner} */
+  #runner
 
   /**
    * Create a wrapper from the builder payload.

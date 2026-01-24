@@ -9,10 +9,12 @@
  * - Error handling and reporting
  */
 
-import {Promised, Sass, Tantrum} from "@gesslar/toolkit"
+import {Disposer, NotifyClass, Promised, Sass, Tantrum} from "@gesslar/toolkit"
 
-export default class Piper {
+export default class Piper extends NotifyClass {
   #debug
+  #disposer = Disposer
+  #abortedReason
 
   #lifeCycle = new Map([
     ["setup", new Set()],
@@ -23,18 +25,32 @@ export default class Piper {
   /**
    * Create a Piper instance.
    *
-   * @param {{debug?: (message: string, level?: number, ...args: Array<unknown>) => void}} [config] Optional configuration with debug function
+   * @param {{debug?: (message: string, level?: number, ...args: Array<unknown>) => void}} [config] - Optional configuration with debug function
    */
   constructor({debug = (() => {})} = {}) {
+    super()
+
     this.#debug = debug
+
+    this.#disposer.register(
+      this.on("abort", this.#abortCalled.bind(this))
+    )
+  }
+
+  #abortCalled(reason) {
+    this.#abortedReason = reason
+  }
+
+  get reason() {
+    return this.#abortedReason
   }
 
   /**
    * Add a processing step to the pipeline
    *
-   * @param {(context: unknown) => Promise<unknown>|unknown} fn Function that processes an item
-   * @param {{name?: string, required?: boolean}} [options] Step options
-   * @param {unknown} [newThis] Optional this binding
+   * @param {(context: unknown) => Promise<unknown>|unknown} fn - Function that processes an item
+   * @param {{name?: string, required?: boolean}} [options] - Step options
+   * @param {unknown} [newThis] - Optional this binding
    * @returns {Piper} The pipeline instance (for chaining)
    */
   addStep(fn, options = {}, newThis) {
@@ -90,7 +106,7 @@ export default class Piper {
     const allResults = new Array(items.length)
 
     const processWorker = async() => {
-      while(true) {
+      while(true && !this.reason) {
         const currentIndex = itemIndex++
 
         if(currentIndex >= items.length)
@@ -133,30 +149,31 @@ export default class Piper {
       this.#processResult("Tearing down the pipeline.", teardownResult)
     }
 
+    if(this.reason)
+      this.emit("aborted", this.reason)
+
     return allResults
   }
 
   /**
    * Validate settleAll results and throw a combined error when rejected.
    *
-   * @param {string} message Context message
-   * @param {Array<unknown>} settled Results from settleAll
    * @private
+   * @param {string} message - Context message
+   * @param {Array<unknown>} settled - Results from settleAll
+   * @throws {Tantrum} - If any rejected
    */
   #processResult(message, settled) {
-    if(settled.some(r => r.status === "rejected"))
-      throw Tantrum.new(
-        message,
-        settled.filter(r => r.status==="rejected").map(r => r.reason)
-      )
+    if(Promised.hasRejected(settled))
+      Promised.throw(settled)
   }
 
   /**
    * Process a single item through all pipeline steps
    *
-   * @param {unknown} item The item to process
-   * @returns {Promise<unknown>} Result from the final step
    * @private
+   * @param {unknown} item - The item to process
+   * @returns {Promise<unknown>} Result from the final step
    */
   async #processItem(item) {
     // Execute each step in sequence

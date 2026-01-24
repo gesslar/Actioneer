@@ -1,6 +1,10 @@
 import {Data} from "@gesslar/toolkit"
 
-/** @typedef {import("./ActionHooks.js").default} ActionHooks */
+/**
+ * @import {default as ActionBuilder} from "./ActionBuilder.js"
+ * @import {default as ActionHooks} from "./ActionHooks.js"
+ * @import {default as ActionWrapper} from "./ActionWrapper.js"
+ **/
 
 /**
  * Activity bit flags recognised by the builder. The flag decides
@@ -29,13 +33,13 @@ export default class Activity {
   #action = null
   /** @type {unknown} */
   #context = null
-  /** @type {ActionHooks|null} */
+  /** @type {ActionHooks?} */
   #hooks = null
-  /** @type {number|null} */
+  /** @type {number?} */
   #kind = null
   /** @type {string|symbol} */
   #name = null
-  /** @type {((context: unknown) => unknown|Promise<unknown>)|import("./ActionBuilder.js").default} */
+  /** @type {((context: unknown) => unknown|Promise<unknown>)|ActionBuilder} */
   #op = null
   /** @type {((context: unknown) => boolean|Promise<boolean>)|null} */
   #pred = null
@@ -43,7 +47,7 @@ export default class Activity {
   #rejoiner = null
   /** @type {((context: unknown) => unknown)|null} */
   #splitter = null
-  /** @type {import("./ActionWrapper.js").default|null} */
+  /** @type {ActionWrapper?} */
   #wrapper = null
   /** @type {symbol} */
   #id = Symbol(performance.now())
@@ -54,13 +58,13 @@ export default class Activity {
    * @param {object} init - Initial properties describing the activity operation, loop semantics, and predicate
    * @param {unknown} init.action - Parent action instance
    * @param {string|symbol} init.name - Activity identifier
-   * @param {(context: unknown) => unknown|Promise<unknown>|import("./ActionBuilder.js").default} init.op - Operation to execute
+   * @param {(context: unknown) => unknown|Promise<unknown>|ActionBuilder} init.op - Operation to execute
    * @param {number} [init.kind] - Optional loop semantics flags
    * @param {(context: unknown) => boolean|Promise<boolean>} [init.pred] - Optional predicate for WHILE/UNTIL
    * @param {ActionHooks} [init.hooks] - Optional hooks instance
    * @param {(context: unknown) => unknown} [init.splitter] - Optional splitter function for SPLIT activities
    * @param {(originalContext: unknown, splitResults: unknown) => unknown} [init.rejoiner] - Optional rejoiner function for SPLIT activities
-   * @param {import("./ActionWrapper.js").default} [init.wrapper] - Optional wrapper containing this activity
+   * @param {ActionWrapper} [init.wrapper] - Optional wrapper containing this activity
    */
   constructor({action,name,op,kind,pred,hooks,splitter,rejoiner,wrapper}) {
     this.#action = action
@@ -131,7 +135,7 @@ export default class Activity {
   /**
    * The operator to execute (function or nested ActionBuilder).
    *
-   * @returns {(context: unknown) => unknown|Promise<unknown>|import("./ActionBuilder.js").default} - Activity operation
+   * @returns {(context: unknown) => unknown|Promise<unknown>|ActionBuilder} - Activity operation
    */
   get op() {
     return this.#op
@@ -140,7 +144,7 @@ export default class Activity {
   /**
    * The splitter function for SPLIT activities.
    *
-   * @returns {((context: unknown) => unknown)|null} Splitter function or null
+   * @returns {((context: unknown) => unknown)?} Splitter function or null
    */
   get splitter() {
     return this.#splitter
@@ -149,7 +153,7 @@ export default class Activity {
   /**
    * The rejoiner function for SPLIT activities.
    *
-   * @returns {((originalContext: unknown, splitResults: unknown) => unknown)|null} Rejoiner function or null
+   * @returns {((originalContext: unknown, splitResults: unknown) => unknown)?} Rejoiner function or null
    */
   get rejoiner() {
     return this.#rejoiner
@@ -168,7 +172,7 @@ export default class Activity {
    * Get the ActionWrapper containing this activity.
    * Used by BREAK/CONTINUE to signal the parent loop.
    *
-   * @returns {import("./ActionWrapper.js").default|null} The wrapper or null
+   * @returns {ActionWrapper?} The wrapper or null
    */
   get wrapper() {
     return this.#wrapper ?? null
@@ -209,7 +213,7 @@ export default class Activity {
   /**
    * Get the hooks instance attached to this activity.
    *
-   * @returns {ActionHooks|null} The hooks instance or null
+   * @returns {ActionHooks?} The hooks instance or null
    */
   get hooks() {
     return this.#hooks

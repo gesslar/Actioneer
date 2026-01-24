@@ -1,17 +1,17 @@
-import {Promised, Data, Sass, Valid, Notify} from "@gesslar/toolkit"
+import {Promised, Data, Sass, Valid} from "@gesslar/toolkit"
 
 import {ACTIVITY} from "./Activity.js"
 import Piper from "./Piper.js"
 
 /**
+ * Types
+ *
+ * @import {default as ActionBuilder} from "./ActionBuilder.js"
+ * @import {default as ActionWrapper} from "./ActionWrapper.js"
+ */
+/**
  * @typedef {(message: string, level?: number, ...args: Array<unknown>) => void} DebugFn
- */
-
-/**
- * @typedef {import("./ActionBuilder.js").default} ActionBuilder
- */
-
-/**
+ *
  * @typedef {object} ActionRunnerOptions
  * @property {DebugFn} [debug] Logger function.
  */
@@ -24,9 +24,9 @@ import Piper from "./Piper.js"
  * context object under `result.value` that can be replaced or enriched.
  */
 export default class ActionRunner extends Piper {
-  /** @type {import("./ActionBuilder.js").default|null} */
+  /** @type {ActionBuilder?} */
   #actionBuilder = null
-  /** @type {import("./ActionWrapper.js").default|null} */
+  /** @type {ActionWrapper?} */
   #actionWrapper = null
 
   /**
@@ -35,13 +35,6 @@ export default class ActionRunner extends Piper {
    * @type {DebugFn}
    */
   #debug = () => {}
-
-  /**
-   * Event emitter for cross-runner communication (BREAK/CONTINUE signals).
-   *
-   * @type {typeof Notify}
-   */
-  #notify = Notify
 
   /**
    * Instantiate a runner over an optional action wrapper.
@@ -79,7 +72,7 @@ export default class ActionRunner extends Piper {
    */
   async run(context, parentWrapper=null) {
     if(!this.#actionWrapper)
-      this.#actionWrapper = await this.#actionBuilder.build()
+      this.#actionWrapper = await this.#actionBuilder.build(this)
 
     const actionWrapper = this.#actionWrapper
     const activities = Array.from(actionWrapper.activities)
@@ -114,7 +107,7 @@ export default class ActionRunner extends Piper {
 
               if(await this.#evalPredicate(activity, context)) {
                 if(kindBreak) {
-                  this.#notify.emit("loop.break", parentWrapper)
+                  this.emit("loop.break", parentWrapper)
                   break
                 }
 
@@ -132,7 +125,7 @@ export default class ActionRunner extends Piper {
                     break
 
                 let weWereOnABreak = false
-                const breakReceiver = this.#notify.on("loop.break", wrapper => {
+                const breakReceiver = this.on("loop.break", wrapper => {
                   if(wrapper.id === actionWrapper.id) {
                     weWereOnABreak = true
                   }
@@ -158,10 +151,7 @@ export default class ActionRunner extends Piper {
                 )
 
               const original = context
-              const splitContexts = await splitter.call(
-                activity.action,
-                context
-              )
+              const splitContexts = await splitter.call(activity.action,context)
 
               let settled
 

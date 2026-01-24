@@ -2,7 +2,11 @@
  * *
  */
 export type ACTIVITY = number;
-/** @typedef {import("./ActionHooks.js").default} ActionHooks */
+/**
+ * @import {default as ActionBuilder} from "./ActionBuilder.js"
+ * @import {default as ActionHooks} from "./ActionHooks.js"
+ * @import {default as ActionWrapper} from "./ActionWrapper.js"
+ **/
 /**
  * Activity bit flags recognised by the builder. The flag decides
  * loop semantics for an activity.
@@ -31,24 +35,24 @@ export default class Activity {
      * @param {object} init - Initial properties describing the activity operation, loop semantics, and predicate
      * @param {unknown} init.action - Parent action instance
      * @param {string|symbol} init.name - Activity identifier
-     * @param {(context: unknown) => unknown|Promise<unknown>|import("./ActionBuilder.js").default} init.op - Operation to execute
+     * @param {(context: unknown) => unknown|Promise<unknown>|ActionBuilder} init.op - Operation to execute
      * @param {number} [init.kind] - Optional loop semantics flags
      * @param {(context: unknown) => boolean|Promise<boolean>} [init.pred] - Optional predicate for WHILE/UNTIL
      * @param {ActionHooks} [init.hooks] - Optional hooks instance
      * @param {(context: unknown) => unknown} [init.splitter] - Optional splitter function for SPLIT activities
      * @param {(originalContext: unknown, splitResults: unknown) => unknown} [init.rejoiner] - Optional rejoiner function for SPLIT activities
-     * @param {import("./ActionWrapper.js").default} [init.wrapper] - Optional wrapper containing this activity
+     * @param {ActionWrapper} [init.wrapper] - Optional wrapper containing this activity
      */
     constructor({ action, name, op, kind, pred, hooks, splitter, rejoiner, wrapper }: {
         action: unknown;
         name: string | symbol;
-        op: (context: unknown) => unknown | Promise<unknown> | import("./ActionBuilder.js").default;
+        op: (context: unknown) => unknown | Promise<unknown> | ActionBuilder;
         kind?: number | undefined;
         pred?: ((context: unknown) => boolean | Promise<boolean>) | undefined;
-        hooks?: import("./ActionHooks.js").default | undefined;
+        hooks?: ActionHooks | undefined;
         splitter?: ((context: unknown) => unknown) | undefined;
         rejoiner?: ((originalContext: unknown, splitResults: unknown) => unknown) | undefined;
-        wrapper?: import("./ActionWrapper.js").default | undefined;
+        wrapper?: ActionWrapper | undefined;
     });
     /**
      * Unique identifier for this activity instance.
@@ -89,19 +93,19 @@ export default class Activity {
     /**
      * The operator to execute (function or nested ActionBuilder).
      *
-     * @returns {(context: unknown) => unknown|Promise<unknown>|import("./ActionBuilder.js").default} - Activity operation
+     * @returns {(context: unknown) => unknown|Promise<unknown>|ActionBuilder} - Activity operation
      */
-    get op(): (context: unknown) => unknown | Promise<unknown> | import("./ActionBuilder.js").default;
+    get op(): (context: unknown) => unknown | Promise<unknown> | ActionBuilder;
     /**
      * The splitter function for SPLIT activities.
      *
-     * @returns {((context: unknown) => unknown)|null} Splitter function or null
+     * @returns {((context: unknown) => unknown)?} Splitter function or null
      */
     get splitter(): ((context: unknown) => unknown) | null;
     /**
      * The rejoiner function for SPLIT activities.
      *
-     * @returns {((originalContext: unknown, splitResults: unknown) => unknown)|null} Rejoiner function or null
+     * @returns {((originalContext: unknown, splitResults: unknown) => unknown)?} Rejoiner function or null
      */
     get rejoiner(): ((originalContext: unknown, splitResults: unknown) => unknown) | null;
     /**
@@ -114,9 +118,9 @@ export default class Activity {
      * Get the ActionWrapper containing this activity.
      * Used by BREAK/CONTINUE to signal the parent loop.
      *
-     * @returns {import("./ActionWrapper.js").default|null} The wrapper or null
+     * @returns {ActionWrapper?} The wrapper or null
      */
-    get wrapper(): import("./ActionWrapper.js").default | null;
+    get wrapper(): ActionWrapper | null;
     /**
      * Execute the activity with before/after hooks.
      *
@@ -134,10 +138,12 @@ export default class Activity {
     /**
      * Get the hooks instance attached to this activity.
      *
-     * @returns {ActionHooks|null} The hooks instance or null
+     * @returns {ActionHooks?} The hooks instance or null
      */
     get hooks(): ActionHooks | null;
     #private;
 }
-export type ActionHooks = import("./ActionHooks.js").default;
+import type { default as ActionBuilder } from "./ActionBuilder.js";
+import type { default as ActionWrapper } from "./ActionWrapper.js";
+import type { default as ActionHooks } from "./ActionHooks.js";
 //# sourceMappingURL=Activity.d.ts.map
