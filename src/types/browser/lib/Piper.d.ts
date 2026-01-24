@@ -1,18 +1,19 @@
-export default class Piper {
+export default class Piper extends NotifyClass {
     /**
      * Create a Piper instance.
      *
-     * @param {{debug?: (message: string, level?: number, ...args: Array<unknown>) => void}} [config] Optional configuration with debug function
+     * @param {{debug?: (message: string, level?: number, ...args: Array<unknown>) => void}} [config] - Optional configuration with debug function
      */
     constructor({ debug }?: {
         debug?: (message: string, level?: number, ...args: Array<unknown>) => void;
     });
+    get reason(): any;
     /**
      * Add a processing step to the pipeline
      *
-     * @param {(context: unknown) => Promise<unknown>|unknown} fn Function that processes an item
-     * @param {{name?: string, required?: boolean}} [options] Step options
-     * @param {unknown} [newThis] Optional this binding
+     * @param {(context: unknown) => Promise<unknown>|unknown} fn - Function that processes an item
+     * @param {{name?: string, required?: boolean}} [options] - Step options
+     * @param {unknown} [newThis] - Optional this binding
      * @returns {Piper} The pipeline instance (for chaining)
      */
     addStep(fn: (context: unknown) => Promise<unknown> | unknown, options?: {
@@ -49,4 +50,5 @@ export default class Piper {
     }>>;
     #private;
 }
+import { NotifyClass } from "@gesslar/toolkit";
 //# sourceMappingURL=Piper.d.ts.map

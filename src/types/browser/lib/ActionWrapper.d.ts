@@ -1,4 +1,10 @@
 /**
+ * Type imports
+ *
+ * @import {default as ActionHooks} from "./ActionHooks.js"
+ * @import {default as ActionRunner} from "./ActionRunner.js"
+ */
+/**
  * @typedef {object} WrappedActivityConfig
  * @property {string|symbol} name Activity identifier used by hooks/logs.
  * @property {(context: unknown) => unknown|Promise<unknown>|ActionWrapper} op Operation or nested wrapper to execute.
@@ -6,9 +12,6 @@
  * @property {(context: unknown) => boolean|Promise<boolean>} [pred] Predicate tied to WHILE/UNTIL semantics.
  * @property {unknown} [action] Parent action instance supplied when invoking the op.
  * @property {(message: string, level?: number, ...args: Array<unknown>) => void} [debug] Optional logger reference.
- */
-/**
- * @typedef {import("@gesslar/toolkit").Generator<Activity, void, unknown>} ActivityIterator
  */
 /**
  * Thin wrapper that materialises {@link Activity} instances on demand.
@@ -76,6 +79,5 @@ export type WrappedActivityConfig = {
      */
     debug?: ((message: string, level?: number, ...args: Array<unknown>) => void) | undefined;
 };
-export type ActivityIterator = import("@gesslar/toolkit").Generator<Activity, void, unknown>;
 import Activity from "./Activity.js";
 //# sourceMappingURL=ActionWrapper.d.ts.map

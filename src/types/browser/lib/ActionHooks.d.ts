@@ -2,14 +2,13 @@
  * @typedef {(message: string, level?: number, ...args: Array<unknown>) => void} DebugFn
  */
 /**
- * @typedef {object} ActionHooksConfig
- * @property {string} actionKind Action identifier shared between runner and hooks.
- * @property {unknown} hooks Already-instantiated hooks implementation.
- * @property {number} [hookTimeout] Timeout applied to hook execution in milliseconds.
- * @property {DebugFn} debug Logger to emit diagnostics.
- */
-/**
  * @typedef {Record<string, (context: unknown) => Promise<unknown>|unknown>} HookModule
+ *
+ * @typedef {object} ActionHooksConfig
+ * @property {string} actionKind - Action identifier shared between runner and hooks.
+ * @property {unknown} hooks - Already-instantiated hooks implementation.
+ * @property {number} [hookTimeout] - Timeout applied to hook execution in milliseconds.
+ * @property {DebugFn} debug - Logger to emit diagnostics.
  */
 /**
  * Generic base class for managing hooks with configurable event types.
@@ -23,15 +22,15 @@ export default class ActionHooks {
      * Static factory method to create and initialize a hook manager.
      * Browser version: Only works with pre-instantiated hooks passed via config.hooks.
      *
-     * @param {ActionHooksConfig} config Configuration object with hooks property
-     * @param {DebugFn} debug The debug function.
-     * @returns {Promise<ActionHooks|null>} Initialized hook manager or null if no hooks provided
+     * @param {ActionHooksConfig} config - Configuration object with hooks property
+     * @param {DebugFn} debug - The debug function.
+     * @returns {Promise<ActionHooks?>} Initialized hook manager or null if no hooks provided
      */
     static "new"(config: ActionHooksConfig, debug: DebugFn): Promise<ActionHooks | null>;
     /**
      * Creates a new ActionHook instance.
      *
-     * @param {ActionHooksConfig} config Configuration values describing how to load the hooks.
+     * @param {ActionHooksConfig} config - Configuration values describing how to load the hooks.
      */
     constructor({ actionKind, hooks, hookTimeout, debug }: ActionHooksConfig);
     /**
@@ -43,7 +42,7 @@ export default class ActionHooks {
     /**
      * Gets the loaded hooks object.
      *
-     * @returns {object|null} Hooks object or null if not loaded
+     * @returns {object?} Hooks object or null if not loaded
      */
     get hooks(): object | null;
     /**
@@ -55,44 +54,44 @@ export default class ActionHooks {
     /**
      * Gets the setup hook function if available.
      *
-     * @returns {(args: object) => unknown|null} Setup hook function or null
+     * @returns {(args: object) => unknown} Setup hook function or null
      */
-    get setup(): (args: object) => unknown | null;
+    get setup(): (args: object) => unknown;
     /**
      * Gets the cleanup hook function if available.
      *
-     * @returns {(args: object) => unknown|null} Cleanup hook function or null
+     * @returns {(args: object) => unknown} Cleanup hook function or null
      */
-    get cleanup(): (args: object) => unknown | null;
+    get cleanup(): (args: object) => unknown;
     /**
      * Invoke a dynamically-named hook such as `before$foo`.
      *
-     * @param {'before'|'after'|'setup'|'cleanup'|string} kind Hook namespace.
-     * @param {string|symbol} activityName Activity identifier.
-     * @param {unknown} context Pipeline context supplied to the hook.
+     * @param {string} kind - Hook namespace.
+     * @param {string|symbol} activityName - Activity identifier.
+     * @param {unknown} context - Pipeline context supplied to the hook.
      * @returns {Promise<void>}
      */
-    callHook(kind: "before" | "after" | "setup" | "cleanup" | string, activityName: string | symbol, context: unknown): Promise<void>;
+    callHook(kind: string, activityName: string | symbol, context: unknown): Promise<void>;
     #private;
 }
 export type DebugFn = (message: string, level?: number, ...args: Array<unknown>) => void;
+export type HookModule = Record<string, (context: unknown) => Promise<unknown> | unknown>;
 export type ActionHooksConfig = {
     /**
-     * Action identifier shared between runner and hooks.
+     * - Action identifier shared between runner and hooks.
      */
     actionKind: string;
     /**
-     * Already-instantiated hooks implementation.
+     * - Already-instantiated hooks implementation.
      */
     hooks: unknown;
     /**
-     * Timeout applied to hook execution in milliseconds.
+     * - Timeout applied to hook execution in milliseconds.
      */
     hookTimeout?: number | undefined;
     /**
-     * Logger to emit diagnostics.
+     * - Logger to emit diagnostics.
      */
     debug: DebugFn;
 };
-export type HookModule = Record<string, (context: unknown) => Promise<unknown> | unknown>;
 //# sourceMappingURL=ActionHooks.d.ts.map

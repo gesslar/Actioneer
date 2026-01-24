@@ -5,15 +5,13 @@ import {Data, Sass, Promised, Time, Util, Valid} from "@gesslar/toolkit"
  */
 
 /**
- * @typedef {object} ActionHooksConfig
- * @property {string} actionKind Action identifier shared between runner and hooks.
- * @property {unknown} hooks Already-instantiated hooks implementation.
- * @property {number} [hookTimeout] Timeout applied to hook execution in milliseconds.
- * @property {DebugFn} debug Logger to emit diagnostics.
- */
-
-/**
  * @typedef {Record<string, (context: unknown) => Promise<unknown>|unknown>} HookModule
+ *
+ * @typedef {object} ActionHooksConfig
+ * @property {string} actionKind - Action identifier shared between runner and hooks.
+ * @property {unknown} hooks - Already-instantiated hooks implementation.
+ * @property {number} [hookTimeout] - Timeout applied to hook execution in milliseconds.
+ * @property {DebugFn} debug - Logger to emit diagnostics.
  */
 
 /**
@@ -24,19 +22,19 @@ import {Data, Sass, Promised, Time, Util, Valid} from "@gesslar/toolkit"
  * Browser version: Requires pre-instantiated hooks. File-based loading is not supported.
  */
 export default class ActionHooks {
-  /** @type {HookModule|null} */
+  /** @type {HookModule?} */
   #hooks = null
-  /** @type {string|null} */
+  /** @type {string?} */
   #actionKind = null
   /** @type {number} */
   #timeout = 1_000 // Default 1 second timeout
-  /** @type {DebugFn|null} */
+  /** @type {DebugFn?} */
   #debug = null
 
   /**
    * Creates a new ActionHook instance.
    *
-   * @param {ActionHooksConfig} config Configuration values describing how to load the hooks.
+   * @param {ActionHooksConfig} config - Configuration values describing how to load the hooks.
    */
   constructor({actionKind, hooks, hookTimeout = 1_000, debug}) {
     this.#actionKind = actionKind
@@ -57,7 +55,7 @@ export default class ActionHooks {
   /**
    * Gets the loaded hooks object.
    *
-   * @returns {object|null} Hooks object or null if not loaded
+   * @returns {object?} Hooks object or null if not loaded
    */
   get hooks() {
     return this.#hooks
@@ -75,7 +73,7 @@ export default class ActionHooks {
   /**
    * Gets the setup hook function if available.
    *
-   * @returns {(args: object) => unknown|null} Setup hook function or null
+   * @returns {(args: object) => unknown} Setup hook function or null
    */
   get setup() {
     return this.hooks?.setup || null
@@ -84,7 +82,7 @@ export default class ActionHooks {
   /**
    * Gets the cleanup hook function if available.
    *
-   * @returns {(args: object) => unknown|null} Cleanup hook function or null
+   * @returns {(args: object) => unknown} Cleanup hook function or null
    */
   get cleanup() {
     return this.hooks?.cleanup || null
@@ -94,9 +92,9 @@ export default class ActionHooks {
    * Static factory method to create and initialize a hook manager.
    * Browser version: Only works with pre-instantiated hooks passed via config.hooks.
    *
-   * @param {ActionHooksConfig} config Configuration object with hooks property
-   * @param {DebugFn} debug The debug function.
-   * @returns {Promise<ActionHooks|null>} Initialized hook manager or null if no hooks provided
+   * @param {ActionHooksConfig} config - Configuration object with hooks property
+   * @param {DebugFn} debug - The debug function.
+   * @returns {Promise<ActionHooks?>} Initialized hook manager or null if no hooks provided
    */
   static async new(config, debug) {
     debug("Creating new HookManager instance with args: %o", 2, config)
@@ -117,9 +115,9 @@ export default class ActionHooks {
   /**
    * Invoke a dynamically-named hook such as `before$foo`.
    *
-   * @param {'before'|'after'|'setup'|'cleanup'|string} kind Hook namespace.
-   * @param {string|symbol} activityName Activity identifier.
-   * @param {unknown} context Pipeline context supplied to the hook.
+   * @param {string} kind - Hook namespace.
+   * @param {string|symbol} activityName - Activity identifier.
+   * @param {unknown} context - Pipeline context supplied to the hook.
    * @returns {Promise<void>}
    */
   async callHook(kind, activityName, context) {
