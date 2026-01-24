@@ -5,7 +5,7 @@ import ActionHooks from "./ActionHooks.js"
 import {ACTIVITY} from "./Activity.js"
 
 /**
- * Type imports
+ * Type imports and definitions.
  *
  * @import {default as ActionRunner} from "./ActionRunner.js"
  *
@@ -82,6 +82,9 @@ export default class ActionBuilder {
     this.#tag = this.#tag || tag
 
     if(action) {
+      if(action.tag)
+        throw Sass.new("Action has already been consumed by a builder and cannot be reused.")
+
       if(Data.typeOf(action.setup) !== "Function")
         throw Sass.new("Setup must be a function.")
 
@@ -302,17 +305,19 @@ export default class ActionBuilder {
       await Promise.resolve(action.setup.call(action, this))
     }
 
+    if(action) {
     // Inject a method to the action for emission, but only if it's undefined.
-    if(Data.isType(action.emit, "Undefined"))
-      action.emit = reason => runner.emit(reason)
+      if(Data.isType(action.emit, "Undefined"))
+        action.emit = reason => runner.emit(reason)
 
-    // Inject a method to the action for onission, but only if it's undefined.
-    if(Data.isType(action.on, "Undefined"))
-      action.on = (event, cb) => runner.on(event, cb)
+      // Inject a method to the action for onission, but only if it's undefined.
+      if(Data.isType(action.on, "Undefined"))
+        action.on = (event, cb) => runner.on(event, cb)
 
-    // Inject a method to the action for offission, but only if it's undefined.
-    if(Data.isType(action.off, "Undefined"))
-      action.off = (event, cb) => runner.off(event, cb)
+      // Inject a method to the action for offission, but only if it's undefined.
+      if(Data.isType(action.off, "Undefined"))
+        action.off = (event, cb) => runner.off(event, cb)
+    }
 
     // All children in a branch also get the same hooks.
     const hooks = await this.#getHooks()
@@ -322,7 +327,7 @@ export default class ActionBuilder {
       debug: this.#debug,
       hooks,
       done: this.#done,
-      action: this.#action,
+      action,
       runner: runner,
     })
   }
