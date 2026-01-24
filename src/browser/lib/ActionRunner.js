@@ -1,4 +1,4 @@
-import {Promised, Data, Sass, Valid} from "@gesslar/toolkit"
+import {Promised, Data, Sass, Tantrum, Valid} from "@gesslar/toolkit"
 
 import {ACTIVITY} from "./Activity.js"
 import Piper from "./Piper.js"
@@ -189,16 +189,19 @@ export default class ActionRunner extends Piper {
           throw Sass.new("ActionRunner running activity", error)
         }
       }
+    } catch(err) {
+      context = Sass.new("Running action.", err)
     } finally {
       // Execute done callback if registered - always runs, even on error
       // Only run for top-level pipelines, not nested builders (inside loops)
       if(actionWrapper.done && !parentWrapper) {
         try {
-          context = await actionWrapper.done.call(
-            actionWrapper.action, context
-          )
+          context = await actionWrapper.done.call(actionWrapper.action, context)
         } catch(error) {
-          throw Sass.new("ActionRunner running done callback", error)
+          if(Data.isType(context, "Error"))
+            context = new Tantrum("ActionRunner running done callback", [context, error])
+          else
+            context = Sass.new("ActionRunner running done callback", error)
         }
       }
     }
@@ -270,8 +273,6 @@ export default class ActionRunner extends Piper {
         throw Sass.new("Executing activity", error)
       }
     }
-
-    console.log(activity.opKind + " " + JSON.stringify(activity))
 
     throw Sass.new("We buy Functions and ActionBuilders. Only. Not whatever that was.")
   }

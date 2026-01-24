@@ -9,7 +9,7 @@
  * - Error handling and reporting
  */
 
-import {Disposer, NotifyClass, Promised, Sass, Tantrum} from "@gesslar/toolkit"
+import {Data, Disposer, NotifyClass, Promised, Sass, Tantrum} from "@gesslar/toolkit"
 
 export default class Piper extends NotifyClass {
   #debug
@@ -117,7 +117,10 @@ export default class Piper extends NotifyClass {
         try {
           const result = await this.#processItem(item)
 
-          allResults[currentIndex] = {status: "fulfilled", value: result}
+          if(Data.isType(result, "Error"))
+            allResults[currentIndex] = {status: "rejected", reason: result}
+          else
+            allResults[currentIndex] = {status: "fulfilled", value: result}
         } catch(error) {
           allResults[currentIndex] = {status: "rejected", reason: error}
         }
