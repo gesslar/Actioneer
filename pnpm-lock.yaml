@@ -10,7 +10,7 @@ importers:
     dependencies:
       '@gesslar/toolkit':
         specifier: ^3.24.0
-        version: 3.25.0(eslint@9.39.2)
+        version: 3.28.0
     devDependencies:
       '@gesslar/uglier':
         specifier: ^1.2.0
@@ -81,8 +81,8 @@ packages:
     engines: {node: '>=22'}
     hasBin: true
 
-  '@gesslar/toolkit@3.25.0':
-    resolution: {integrity: sha512-P9iTu1EOk4EkS8aE0JVCbzVmjPlDB8F2cg2oR53anqsCv2F4QvDlDOwmzlli7hta046sFHzfvo+FYx4vnHWwQw==}
+  '@gesslar/toolkit@3.28.0':
+    resolution: {integrity: sha512-OTlpmlcHEOoxZKUFUpEXr7t62N88xz+xiYw+xVAasWt64KU8lLs5LuW9skgZAXVjnCL/AiFU+YnCDjvKF7RUZQ==}
     engines: {node: '>=24.13.0'}
 
   '@gesslar/uglier@1.2.0':
@@ -467,6 +467,10 @@ packages:
     resolution: {integrity: sha512-6fPc+R4ihwqP6N/aIv2f1gMH8lOVtWQHoqC4yK6oSDVVocumAsfCqjkXnqiYMhmMwS/mEHLp7Vehlt3ql6lEig==}
     engines: {node: '>=8'}
 
+  supports-color@10.2.2:
+    resolution: {integrity: sha512-SS+jx45GF1QjgEXQx4NJZV9ImqmO2NPz5FNsIHrsDjh2YsHnawpan7SNQ1o8NuhrbHZy9AZhIoCUiCeaW/C80g==}
+    engines: {node: '>=18'}
+
   supports-color@7.2.0:
     resolution: {integrity: sha512-qpCAvRl9stuOHveKsn7HncJRvv501qIacKzQlO/+Lwxc9+0q2wLyv4Dfvt80/DPn2pqOBsJdDiogXGR9+OvwRw==}
     engines: {node: '>=8'}
@@ -478,10 +482,6 @@ packages:
   type-check@0.4.0:
     resolution: {integrity: sha512-XleUoc9uwGXqjWwXaUTZAmzMcFZ5858QA2vvx1Ur5xIcixXIP+8LnFDgRplU30us6teqdlskFfu+ae4K79Ooew==}
     engines: {node: '>= 0.8.0'}
-
-  types@0.1.1:
-    resolution: {integrity: sha512-JuntZtJj4MKLE9x/XBs7IjsznYhzETwr34pw3XJTKvgYtAMdeMG+o8x8U85E5Lm6eCPa1DdOdGVsHMwq4ZnZAg==}
-    engines: {node: '>= 0.6.0'}
 
   typescript@5.9.3:
     resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
@@ -574,23 +574,18 @@ snapshots:
 
   '@gesslar/colours@0.8.0': {}
 
-  '@gesslar/toolkit@3.25.0(eslint@9.39.2)':
+  '@gesslar/toolkit@3.28.0':
     dependencies:
-      '@eslint/js': 9.39.2
       '@gesslar/colours': 0.8.0
-      '@stylistic/eslint-plugin': 5.7.0(eslint@9.39.2)
       ajv: 8.17.1
-      globals: 17.0.0
       json5: 2.2.3
-      types: 0.1.1
+      supports-color: 10.2.2
       yaml: 2.8.2
-    transitivePeerDependencies:
-      - eslint
 
   '@gesslar/uglier@1.2.0(eslint@9.39.2)':
     dependencies:
       '@gesslar/colours': 0.8.0
-      '@gesslar/toolkit': 3.25.0(eslint@9.39.2)
+      '@gesslar/toolkit': 3.28.0
       '@skarab/detect-package-manager': 1.0.0
       '@stylistic/eslint-plugin': 5.7.0(eslint@9.39.2)
       eslint: 9.39.2
@@ -950,6 +945,8 @@ snapshots:
 
   strip-json-comments@3.1.1: {}
 
+  supports-color@10.2.2: {}
+
   supports-color@7.2.0:
     dependencies:
       has-flag: 4.0.0
@@ -962,8 +959,6 @@ snapshots:
   type-check@0.4.0:
     dependencies:
       prelude-ls: 1.2.1
-
-  types@0.1.1: {}
 
   typescript@5.9.3: {}
 
