@@ -60,15 +60,17 @@ describe("ActionBuilder", () => {
       assert.equal(builder.tag, tag)
     })
 
-    it("uses action.tag if available", () => {
+    it("throws when action has already been consumed (has tag)", () => {
       const tag = Symbol("action-tag")
       const action = {
         tag,
         setup: () => {}
       }
 
-      const builder = new ActionBuilder(action)
-      assert.equal(builder.tag, tag)
+      assert.throws(
+        () => new ActionBuilder(action),
+        /Action has already been consumed/
+      )
     })
   })
 

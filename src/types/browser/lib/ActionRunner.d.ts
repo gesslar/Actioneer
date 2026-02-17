@@ -34,6 +34,7 @@ export default class ActionRunner extends Piper {
      * @param {import("./ActionWrapper.js").default|null} [parentWrapper] - Parent wrapper for BREAK/CONTINUE signaling.
      * @returns {Promise<unknown>} Final value produced by the pipeline.
      * @throws {Sass} When no activities are registered, conflicting activity kinds are used, or execution fails.
+     * @throws {Tantrum} When both an activity and the done callback fail.
      */
     run(context: unknown, parentWrapper?: import("./ActionWrapper.js").default | null): Promise<unknown>;
     #private;

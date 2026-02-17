@@ -69,6 +69,7 @@ export default class ActionRunner extends Piper {
    * @param {import("./ActionWrapper.js").default|null} [parentWrapper] - Parent wrapper for BREAK/CONTINUE signaling.
    * @returns {Promise<unknown>} Final value produced by the pipeline.
    * @throws {Sass} When no activities are registered, conflicting activity kinds are used, or execution fails.
+   * @throws {Tantrum} When both an activity and the done callback fail.
    */
   async run(context, parentWrapper=null) {
     if(!this.#actionWrapper)
@@ -76,6 +77,8 @@ export default class ActionRunner extends Piper {
 
     const actionWrapper = this.#actionWrapper
     const activities = Array.from(actionWrapper.activities)
+
+    let caughtError = null
 
     try {
       for(
@@ -190,21 +193,26 @@ export default class ActionRunner extends Piper {
         }
       }
     } catch(err) {
-      context = Sass.new("Running action.", err)
-    } finally {
-      // Execute done callback if registered - always runs, even on error
-      // Only run for top-level pipelines, not nested builders (inside loops)
-      if(actionWrapper.done && !parentWrapper) {
-        try {
-          context = await actionWrapper.done.call(actionWrapper.action, context)
-        } catch(error) {
-          if(Data.isType(context, "Error"))
-            context = new Tantrum("ActionRunner running done callback", [context, error])
-          else
-            context = Sass.new("ActionRunner running done callback", error)
-        }
+      caughtError = err
+    }
+
+    // Execute done callback if registered - always runs, even on error
+    // Only run for top-level pipelines, not nested builders (inside loops)
+    if(actionWrapper.done && !parentWrapper) {
+      try {
+        context = await actionWrapper.done.call(
+          actionWrapper.action, caughtError ?? context
+        )
+      } catch(error) {
+        if(caughtError)
+          caughtError = new Tantrum("ActionRunner running done callback", [caughtError, error])
+        else
+          caughtError = Sass.new("ActionRunner running done callback", error)
       }
     }
+
+    if(caughtError)
+      throw caughtError
 
     return context
   }
@@ -241,10 +249,20 @@ export default class ActionRunner extends Piper {
         debug: this.#debug, name: activity.name
       })
 
-      if(parallel) {
-        return await runner.pipe(context)
-      } else {
-        return await runner.run(context, activity.wrapper)
+      // Forward loop.break events from nested runner to this runner
+      // so that parent WHILE/UNTIL loops can receive break signals.
+      const forwarder = runner.on("loop.break",
+        wrapper => this.emit("loop.break", wrapper)
+      )
+
+      try {
+        if(parallel) {
+          return await runner.pipe(context)
+        } else {
+          return await runner.run(context, activity.wrapper)
+        }
+      } finally {
+        forwarder()
       }
     } else if(opKind === "Function") {
       try {

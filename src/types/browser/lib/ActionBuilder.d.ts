@@ -1,5 +1,5 @@
 /**
- * Type imports
+ * Type imports and definitions.
  *
  * @import {default as ActionRunner} from "./ActionRunner.js"
  *
@@ -136,11 +136,11 @@ export default class ActionBuilder {
     #private;
 }
 /**
- * Type imports
+ * Type imports and definitions.
  */
 export type DebugFn = (message: string, level?: number, ...args: Array<unknown>) => void;
 /**
- * Type imports
+ * Type imports and definitions.
  */
 export type ActionBuilderAction = {
     /**
@@ -153,7 +153,7 @@ export type ActionBuilderAction = {
     tag?: symbol | undefined;
 };
 /**
- * Type imports
+ * Type imports and definitions.
  */
 export type ActionBuilderConfig = {
     /**
@@ -166,7 +166,7 @@ export type ActionBuilderConfig = {
     debug?: DebugFn | undefined;
 };
 /**
- * Type imports
+ * Type imports and definitions.
  */
 export type ActivityDefinition = {
     /**
@@ -195,7 +195,7 @@ export type ActivityDefinition = {
     pred?: ((context: unknown) => boolean | Promise<boolean>) | undefined;
 };
 /**
- * Type imports
+ * Type imports and definitions.
  */
 export type ActionFunction = (context: unknown) => unknown | Promise<unknown>;
 import ActionHooks from "./ActionHooks.js";

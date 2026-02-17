@@ -308,7 +308,7 @@ export default class ActionBuilder {
     if(action) {
     // Inject a method to the action for emission, but only if it's undefined.
       if(Data.isType(action.emit, "Undefined"))
-        action.emit = reason => runner.emit(reason)
+        action.emit = (...args) => runner.emit(...args)
 
       // Inject a method to the action for onission, but only if it's undefined.
       if(Data.isType(action.on, "Undefined"))
