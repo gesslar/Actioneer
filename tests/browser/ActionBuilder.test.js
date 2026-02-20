@@ -133,6 +133,23 @@ describe("ActionBuilder (browser)", () => {
     })
   })
 
+  describe("hooks getter", () => {
+    it("returns null when no hooks are configured", () => {
+      const builder = new ActionBuilder()
+
+      assert.equal(builder.hooks, null)
+    })
+
+    it("returns the raw hooks instance set via withHooks()", () => {
+      const hooks = {before$work: () => {}}
+      const builder = new ActionBuilder()
+
+      builder.withHooks(hooks)
+
+      assert.equal(builder.hooks, hooks)
+    })
+  })
+
   describe("pipe() for concurrent execution", () => {
     it("processes multiple contexts concurrently", async() => {
       class ConcurrentAction {

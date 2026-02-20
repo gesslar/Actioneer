@@ -130,9 +130,17 @@ export default class ActionBuilder {
      * Finalises the builder and returns a payload that can be consumed by the
      * runner.
      *
+     * @param {ActionRunner} runner - The runner invoking the build.
      * @returns {Promise<ActionWrapper>} Payload consumed by the {@link ActionRunner} constructor.
      */
-    build(runner: any): Promise<ActionWrapper>;
+    build(runner: ActionRunner): Promise<ActionWrapper>;
+    /**
+     * Returns the raw hooks value configured on this builder.
+     * Used by {@link ActionRunner} to access setup/cleanup lifecycle hooks.
+     *
+     * @returns {object|Function|null} Raw hooks value, or null if not configured.
+     */
+    get hooks(): object | Function | null;
     #private;
 }
 /**
@@ -199,5 +207,6 @@ export type ActivityDefinition = {
  */
 export type ActionFunction = (context: unknown) => unknown | Promise<unknown>;
 import ActionHooks from "./ActionHooks.js";
+import type { default as ActionRunner } from "./ActionRunner.js";
 import ActionWrapper from "./ActionWrapper.js";
 //# sourceMappingURL=ActionBuilder.d.ts.map

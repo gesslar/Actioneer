@@ -2,7 +2,6 @@
  * Type imports
  *
  * @import {default as ActionHooks} from "./ActionHooks.js"
- * @import {default as ActionRunner} from "./ActionRunner.js"
  */
 /**
  * @typedef {object} WrappedActivityConfig
@@ -20,11 +19,19 @@ export default class ActionWrapper {
     /**
      * Create a wrapper from the builder payload.
      *
-     * @param {{activities: Map<string|symbol, WrappedActivityConfig>, debug: (message: string, level?: number, ...args: Array<unknown>) => void}} init Builder payload containing activities + logger.
+     * @param {object} init - Builder payload.
+     * @param {Map<string|symbol, WrappedActivityConfig>} init.activities - Registered activities.
+     * @param {(message: string, level?: number, ...args: Array<unknown>) => void} init.debug - Logger.
+     * @param {import("./ActionHooks.js").default?} init.hooks - Optional hooks instance.
+     * @param {((context: unknown) => unknown|Promise<unknown>)|null} [init.done] - Optional done callback.
+     * @param {unknown} [init.action] - Optional parent action instance.
      */
     constructor({ activities, hooks, debug, done: doneCallback, action }: {
         activities: Map<string | symbol, WrappedActivityConfig>;
         debug: (message: string, level?: number, ...args: Array<unknown>) => void;
+        hooks: import("./ActionHooks.js").default | null;
+        done?: ((context: unknown) => unknown | Promise<unknown>) | null | undefined;
+        action?: unknown;
     });
     /**
      * Unique identifier for this wrapper instance.

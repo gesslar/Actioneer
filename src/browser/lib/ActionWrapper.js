@@ -4,7 +4,6 @@ import Activity from "./Activity.js"
  * Type imports
  *
  * @import {default as ActionHooks} from "./ActionHooks.js"
- * @import {default as ActionRunner} from "./ActionRunner.js"
  */
 
 /**
@@ -43,13 +42,16 @@ export default class ActionWrapper {
   #action = null
   /** @type {symbol} */
   #id = Symbol(performance.now())
-  /** @type {ActionRunner} */
-  #runner
 
   /**
    * Create a wrapper from the builder payload.
    *
-   * @param {{activities: Map<string|symbol, WrappedActivityConfig>, debug: (message: string, level?: number, ...args: Array<unknown>) => void}} init Builder payload containing activities + logger.
+   * @param {object} init - Builder payload.
+   * @param {Map<string|symbol, WrappedActivityConfig>} init.activities - Registered activities.
+   * @param {(message: string, level?: number, ...args: Array<unknown>) => void} init.debug - Logger.
+   * @param {import("./ActionHooks.js").default?} init.hooks - Optional hooks instance.
+   * @param {((context: unknown) => unknown|Promise<unknown>)|null} [init.done] - Optional done callback.
+   * @param {unknown} [init.action] - Optional parent action instance.
    */
   constructor({activities,hooks,debug,done: doneCallback,action}) {
     this.#debug = debug

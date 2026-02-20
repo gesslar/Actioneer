@@ -9,7 +9,7 @@ import {Data, Sass, Promised, Time, Util, Valid} from "@gesslar/toolkit"
  *
  * @typedef {object} ActionHooksConfig
  * @property {string} actionKind - Action identifier shared between runner and hooks.
- * @property {unknown} hooks - Already-instantiated hooks implementation.
+ * @property {object|Function|null} hooks - Pre-instantiated hooks object, a constructor to instantiate, or null.
  * @property {number} [hookTimeout] - Timeout applied to hook execution in milliseconds.
  * @property {DebugFn} debug - Logger to emit diagnostics.
  */
@@ -54,10 +54,18 @@ export default class ActionHooks {
 
   /**
    * Gets the loaded hooks object.
+   * If the stored value is a plain object it is returned as-is.
+   * If it is a constructor function a new instance is created and returned.
    *
    * @returns {object?} Hooks object or null if not loaded
    */
   get hooks() {
+    if(Data.isType(this.#hooks, "Object"))
+      return this.#hooks
+
+    else if(Data.isType(this.#hooks, "Function"))
+      return new this.#hooks()
+
     return this.#hooks
   }
 
@@ -97,7 +105,7 @@ export default class ActionHooks {
    * @returns {Promise<ActionHooks?>} Initialized hook manager or null if no hooks provided
    */
   static async new(config, debug) {
-    debug("Creating new HookManager instance with args: %o", 2, config)
+    debug("Creating new ActionHooks instance with args: %o", 2, config)
 
     if(!config.hooks) {
       debug("No hooks provided (browser mode requires pre-instantiated hooks)", 2)
@@ -117,10 +125,11 @@ export default class ActionHooks {
    *
    * @param {string} kind - Hook namespace.
    * @param {string|symbol} activityName - Activity identifier.
-   * @param {unknown} context - Pipeline context supplied to the hook.
+   * @param {unknown} oldContext - Pipeline context supplied to the hook.
+   * @param {unknown} newContext - For after$ hooks, the result of the op
    * @returns {Promise<void>}
    */
-  async callHook(kind, activityName, context) {
+  async callHook(kind, activityName, oldContext, newContext) {
     try {
       const debug = this.#debug
       const hooks = this.#hooks
@@ -147,7 +156,11 @@ export default class ActionHooks {
         debug("Hook function starting execution: %o", 4, hookName)
 
         const duration = (
-          await Util.time(() => hook.call(this.#hooks, context))
+          newContext
+            ? await Util.time(
+              () => hook.call(this.#hooks, newContext, oldContext)
+            )
+            : await Util.time(() => hook.call(this.#hooks, oldContext))
         ).cost
 
         debug("Hook function completed successfully: %o, after %oms", 4, hookName, duration)
@@ -168,9 +181,6 @@ export default class ActionHooks {
       } catch(error) {
         throw Sass.new(`Processing hook ${kind}$${activityName}`, error)
       }
-
-      debug("We made it throoough the wildernessss", 4)
-
     } catch(error) {
       throw Sass.new(`Processing hook ${kind}$${activityName}`, error)
     }
