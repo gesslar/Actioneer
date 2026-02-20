@@ -9,7 +9,11 @@
  * - Error handling and reporting
  */
 
-import {Data, Disposer, NotifyClass, Promised, Sass, Tantrum} from "@gesslar/toolkit"
+import {Data, Disposer, NotifyClass, Promised, Sass} from "@gesslar/toolkit"
+
+/**
+ * @import {Tantrum} from "@gesslar/toolkit"
+ */
 
 export default class Piper extends NotifyClass {
   #debug
@@ -67,7 +71,7 @@ export default class Piper extends NotifyClass {
   /**
    * Add setup hook that runs before processing starts.
    *
-   * @param {() => Promise<void>|void} fn - Setup function executed before processing
+   * @param {(items: Array<unknown>) => Promise<void>|void} fn - Setup function executed before processing; receives the full items array.
    * @param {unknown} [thisArg] - Optional this binding for the setup function
    * @returns {Piper} - The pipeline instance
    */
@@ -80,7 +84,7 @@ export default class Piper extends NotifyClass {
   /**
    * Add cleanup hook that runs after processing completes
    *
-   * @param {() => Promise<void>|void} fn - Cleanup function executed after processing
+   * @param {(items: Array<unknown>) => Promise<void>|void} fn - Cleanup function executed after processing; receives the full items array.
    * @param {unknown} [thisArg] - Optional this binding for the cleanup function
    * @returns {Piper} - The pipeline instance
    */
@@ -128,7 +132,7 @@ export default class Piper extends NotifyClass {
     }
 
     const setupResult = await Promised.settle(
-      [...this.#lifeCycle.get("setup")].map(e => Promise.resolve(e()))
+      [...this.#lifeCycle.get("setup")].map(e => Promise.resolve(e(items)))
     )
 
     this.#processResult("Setting up the pipeline.", setupResult)
@@ -146,7 +150,7 @@ export default class Piper extends NotifyClass {
     } finally {
       // Run cleanup hooks
       const teardownResult = await Promised.settle(
-        [...this.#lifeCycle.get("teardown")].map(e => Promise.resolve(e()))
+        [...this.#lifeCycle.get("teardown")].map(e => Promise.resolve(e(items)))
       )
 
       this.#processResult("Tearing down the pipeline.", teardownResult)
@@ -164,9 +168,9 @@ export default class Piper extends NotifyClass {
    * @private
    * @param {string} message - Context message
    * @param {Array<unknown>} settled - Results from settleAll
-   * @throws {Tantrum} - If any rejected
+   * @throws {Tantrum} - If any settled result was rejected
    */
-  #processResult(message, settled) {
+  #processResult(_message, settled) {
     if(Promised.hasRejected(settled))
       Promised.throw(settled)
   }

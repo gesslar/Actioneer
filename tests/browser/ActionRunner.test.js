@@ -43,6 +43,50 @@ describe('ActionRunner (browser)', () => {
     })
   })
 
+  describe('pipe() lifecycle hooks', () => {
+    it('calls hooks.setup before processing and hooks.cleanup after', async() => {
+      const log = []
+
+      const hooks = {
+        setup() { log.push('setup') },
+        cleanup() { log.push('cleanup') }
+      }
+
+      class LifecycleAction {
+        setup(builder) {
+          builder
+            .withHooks(hooks)
+            .do('work', ctx => {
+              log.push('work')
+
+              return ctx
+            })
+        }
+      }
+
+      const builder = new ActionBuilder(new LifecycleAction())
+      const runner = new ActionRunner(builder)
+
+      await runner.pipe([{}])
+
+      assert.ok(log.indexOf('setup') < log.indexOf('work'), 'setup should run before work')
+      assert.ok(log.indexOf('work') < log.indexOf('cleanup'), 'cleanup should run after work')
+    })
+
+    it('does not throw when no setup/cleanup hooks are defined', async() => {
+      class SimpleAction {
+        setup(builder) {
+          builder.do('work', ctx => ctx)
+        }
+      }
+
+      const builder = new ActionBuilder(new SimpleAction())
+      const runner = new ActionRunner(builder)
+
+      await assert.doesNotReject(() => runner.pipe([{}]))
+    })
+  })
+
   describe('pipe() method', () => {
     it('processes multiple contexts with concurrency control', async() => {
       const executionOrder = []

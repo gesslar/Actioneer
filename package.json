@@ -22,8 +22,6 @@
     "composition",
     "lasagna"
   ],
-  "packageManager": "pnpm@10.30.0",
-  "main": "./src/index.js",
   "type": "module",
   "exports": {
     ".": {
@@ -47,27 +45,27 @@
   ],
   "sideEffects": false,
   "engines": {
-    "node": ">=22"
+    "node": ">=24.13.0"
   },
   "scripts": {
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "types": "node -e \"require('fs').rmSync('types',{recursive:true,force:true});\" && tsc -p tsconfig.types.json",
-    "submit": "pnpm publish --access public --//registry.npmjs.org/:_authToken=\"${NPM_ACCESS_TOKEN}\"",
-    "update": "pnpm self-update && pnpx npm-check-updates -u && pnpm install",
+    "submit": "npm publish --access public --//registry.npmjs.org/:_authToken=\"${NPM_ACCESS_TOKEN}\"",
+    "update": "npx npm-check-updates -u && npm install",
     "test": "node --test tests/**/*.test.js",
     "test:browser": "node --test tests/browser/*.test.js",
     "test:node": "node --test tests/node/*.test.js",
     "pr": "gt submit -p --ai",
-    "patch": "pnpm version patch",
-    "minor": "pnpm version minor",
-    "major": "pnpm version major"
+    "patch": "npm version patch",
+    "minor": "npm version minor",
+    "major": "npm version major"
   },
   "dependencies": {
-    "@gesslar/toolkit": "^3.34.0"
+    "@gesslar/toolkit": "^3.37.0"
   },
   "devDependencies": {
-    "@gesslar/uglier": "^1.4.1",
+    "@gesslar/uglier": "^1.6.2",
     "eslint": "^10.0.0",
     "typescript": "^5.9.3"
   }

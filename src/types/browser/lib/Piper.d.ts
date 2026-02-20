@@ -1,3 +1,6 @@
+/**
+ * @import {Tantrum} from "@gesslar/toolkit"
+ */
 export default class Piper extends NotifyClass {
     /**
      * Create a Piper instance.
@@ -23,19 +26,19 @@ export default class Piper extends NotifyClass {
     /**
      * Add setup hook that runs before processing starts.
      *
-     * @param {() => Promise<void>|void} fn - Setup function executed before processing
+     * @param {(items: Array<unknown>) => Promise<void>|void} fn - Setup function executed before processing; receives the full items array.
      * @param {unknown} [thisArg] - Optional this binding for the setup function
      * @returns {Piper} - The pipeline instance
      */
-    addSetup(fn: () => Promise<void> | void, thisArg?: unknown): Piper;
+    addSetup(fn: (items: Array<unknown>) => Promise<void> | void, thisArg?: unknown): Piper;
     /**
      * Add cleanup hook that runs after processing completes
      *
-     * @param {() => Promise<void>|void} fn - Cleanup function executed after processing
+     * @param {(items: Array<unknown>) => Promise<void>|void} fn - Cleanup function executed after processing; receives the full items array.
      * @param {unknown} [thisArg] - Optional this binding for the cleanup function
      * @returns {Piper} - The pipeline instance
      */
-    addCleanup(fn: () => Promise<void> | void, thisArg?: unknown): Piper;
+    addCleanup(fn: (items: Array<unknown>) => Promise<void> | void, thisArg?: unknown): Piper;
     /**
      * Process items through the pipeline with concurrency control
      *

@@ -6,7 +6,7 @@
  *
  * @typedef {object} ActionHooksConfig
  * @property {string} actionKind - Action identifier shared between runner and hooks.
- * @property {unknown} hooks - Already-instantiated hooks implementation.
+ * @property {object|Function|null} hooks - Pre-instantiated hooks object, a constructor to instantiate, or null.
  * @property {number} [hookTimeout] - Timeout applied to hook execution in milliseconds.
  * @property {DebugFn} debug - Logger to emit diagnostics.
  */
@@ -41,6 +41,8 @@ export default class ActionHooks {
     get actionKind(): string;
     /**
      * Gets the loaded hooks object.
+     * If the stored value is a plain object it is returned as-is.
+     * If it is a constructor function a new instance is created and returned.
      *
      * @returns {object?} Hooks object or null if not loaded
      */
@@ -68,10 +70,11 @@ export default class ActionHooks {
      *
      * @param {string} kind - Hook namespace.
      * @param {string|symbol} activityName - Activity identifier.
-     * @param {unknown} context - Pipeline context supplied to the hook.
+     * @param {unknown} oldContext - Pipeline context supplied to the hook.
+     * @param {unknown} newContext - For after$ hooks, the result of the op
      * @returns {Promise<void>}
      */
-    callHook(kind: string, activityName: string | symbol, context: unknown): Promise<void>;
+    callHook(kind: string, activityName: string | symbol, oldContext: unknown, newContext: unknown): Promise<void>;
     #private;
 }
 export type DebugFn = (message: string, level?: number, ...args: Array<unknown>) => void;
@@ -82,9 +85,9 @@ export type ActionHooksConfig = {
      */
     actionKind: string;
     /**
-     * - Already-instantiated hooks implementation.
+     * - Pre-instantiated hooks object, a constructor to instantiate, or null.
      */
-    hooks: unknown;
+    hooks: object | Function | null;
     /**
      * - Timeout applied to hook execution in milliseconds.
      */

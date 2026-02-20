@@ -229,10 +229,10 @@ export default class ActionBuilder {
    * @throws {Sass} If hooks have already been configured with a different instance.
    */
   withHooks(hooks) {
-    // If the same hooks instance is already set, this is idempotent - just return
-    if(this.#hooks === hooks) {
+    // If the same hooks instance is already set, this is idempotent -just
+    // return.
+    if(this.#hooks === hooks)
       return this
-    }
 
     Valid.assert(this.#hooksFile === null, "Hooks have already been configured.")
     Valid.assert(this.#hooksKind === null, "Hooks have already been configured.")
@@ -294,6 +294,7 @@ export default class ActionBuilder {
    * Finalises the builder and returns a payload that can be consumed by the
    * runner.
    *
+   * @param {ActionRunner} runner - The runner invoking the build.
    * @returns {Promise<ActionWrapper>} Payload consumed by the {@link ActionRunner} constructor.
    */
   async build(runner) {
@@ -350,5 +351,15 @@ export default class ActionBuilder {
 
     if(hooksFile && hooksKind)
       return await newHooks({hooksFile,hooksKind}, this.#debug)
+  }
+
+  /**
+   * Returns the raw hooks value configured on this builder.
+   * Used by {@link ActionRunner} to access setup/cleanup lifecycle hooks.
+   *
+   * @returns {object|Function|null} Raw hooks value, or null if not configured.
+   */
+  get hooks() {
+    return this.#hooks
   }
 }

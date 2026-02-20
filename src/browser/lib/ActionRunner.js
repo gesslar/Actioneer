@@ -55,9 +55,45 @@ export default class ActionRunner extends Piper {
 
     this.#actionBuilder = actionBuilder
 
+    this.addSetup(this.#setupHooks)
     this.addStep(this.run, {
       name: `ActionRunner for ${actionBuilder.tag.description}`
     })
+    this.addCleanup(this.#cleanupHooks)
+  }
+
+  /**
+   * Invokes the `setup` lifecycle hook on the raw hooks object, if defined.
+   * Registered as a Piper setup step so it fires before any items are processed.
+   *
+   * @param {unknown} ctx - Value passed by {@link Piper#pipe} (the items array).
+   * @returns {Promise<void>}
+   * @private
+   */
+  async #setupHooks(ctx) {
+    const ab = this.#actionBuilder
+    const ah = ab?.hooks
+    const setup = ah?.setup
+
+    if(setup)
+      await setup.call(ah, ctx)
+  }
+
+  /**
+   * Invokes the `cleanup` lifecycle hook on the raw hooks object, if defined.
+   * Registered as a Piper teardown step so it fires after all items are processed.
+   *
+   * @param {unknown} ctx - Value passed by {@link Piper#pipe} (the items array).
+   * @returns {Promise<void>}
+   * @private
+   */
+  async #cleanupHooks(ctx) {
+    const ab = this.#actionBuilder
+    const ah = ab?.hooks
+    const cleanup = ah?.cleanup
+
+    if(cleanup)
+      await cleanup.call(ah, ctx)
   }
 
   /**
