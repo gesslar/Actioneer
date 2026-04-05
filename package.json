@@ -5,8 +5,8 @@
     "name": "gesslar",
     "url": "https://gesslar.dev"
   },
-  "version": "2.4.0",
-  "license": "Unlicense",
+  "version": "3.0.0",
+  "license": "0BSD",
   "homepage": "https://github.com/gesslar/toolkit#readme",
   "repository": {
     "type": "git",
