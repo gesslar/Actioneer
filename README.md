@@ -786,7 +786,14 @@ Contributions and issues are welcome. Please open issues for feature requests or
 
 ## License
 
-This project is published under the Unlicense (see `UNLICENSE.txt`).
+`@gesslar/actioneer` is released into the public domain under the [Unlicense](LICENSE.txt).
+
+This package includes or depends on third-party components under their own
+licenses:
+
+| Dependency | License |
+| --- | --- |
+| [@gesslar/toolkit](https://github.com/gesslar/toolkit) | 0BSD |
 
 ## Most Portum
 
