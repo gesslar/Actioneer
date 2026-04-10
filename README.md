@@ -786,7 +786,7 @@ Contributions and issues are welcome. Please open issues for feature requests or
 
 ## License
 
-`@gesslar/actioneer` is released into the public domain under the [Unlicense](LICENSE.txt).
+`@gesslar/actioneer` is released under the [0BSD](LICENSE.txt).
 
 This package includes or depends on third-party components under their own
 licenses:
