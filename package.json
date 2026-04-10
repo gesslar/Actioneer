@@ -41,7 +41,7 @@
   },
   "files": [
     "src/",
-    "UNLICENSE.txt"
+    "LICENSE.txt"
   ],
   "sideEffects": false,
   "engines": {
