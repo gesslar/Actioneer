@@ -123,7 +123,7 @@ export default class ActionRunner extends Piper {
    * @param {unknown} context - Seed value passed to the first activity.
    * @param {import("./ActionWrapper.js").default|null} [parentWrapper] - Parent wrapper for BREAK/CONTINUE signaling.
    * @returns {Promise<unknown>} Final value produced by the pipeline.
-   * @throws {Sass} When no activities are registered, conflicting activity kinds are used, or execution fails.
+   * @throws {Sass} When an activity errors, or for invalid usage such as BREAK/CONTINUE outside a loop or a SPLIT missing its splitter/rejoiner. An empty pipeline returns the seed context unchanged.
    * @throws {Tantrum} When both an activity and the done callback fail.
    */
   async run(context, parentWrapper=null) {
