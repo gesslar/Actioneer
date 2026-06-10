@@ -113,4 +113,13 @@ export default class ActionWrapper {
   get action() {
     return this.#action
   }
+
+  /**
+   * Get the resolved hooks manager.
+   *
+   * @returns {import("./ActionHooks.js").default?} Hooks manager or null.
+   */
+  get hooks() {
+    return this.#hooks
+  }
 }

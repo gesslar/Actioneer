@@ -63,7 +63,25 @@ export default class ActionRunner extends Piper {
   }
 
   /**
-   * Invokes the `setup` lifecycle hook on the raw hooks object, if defined.
+   * Builds the ActionWrapper on first use and caches it for subsequent calls.
+   *
+   * Hooks are configured by the action's `setup()`, which only runs during
+   * `build()`. The setup/cleanup lifecycle hooks fire from {@link Piper#pipe}
+   * before any item is processed, so the wrapper must be built here too —
+   * otherwise the resolved hooks would not yet exist when setup runs.
+   *
+   * @returns {Promise<import("./ActionWrapper.js").default>} The built wrapper.
+   * @private
+   */
+  async #ensureBuilt() {
+    if(!this.#actionWrapper)
+      this.#actionWrapper = await this.#actionBuilder.build(this)
+
+    return this.#actionWrapper
+  }
+
+  /**
+   * Invokes the `setup` lifecycle hook on the resolved hooks object, if defined.
    * Registered as a Piper setup step so it fires before any items are processed.
    *
    * @param {unknown} ctx - Value passed by {@link Piper#pipe} (the items array).
@@ -71,29 +89,30 @@ export default class ActionRunner extends Piper {
    * @private
    */
   async #setupHooks(ctx) {
-    const ab = this.#actionBuilder
-    const ah = ab?.hooks
+    const wrapper = await this.#ensureBuilt()
+    const ah = wrapper.hooks
     const setup = ah?.setup
 
     if(setup)
-      await setup.call(ah, ctx)
+      await setup.call(ah.hooks, ctx)
   }
 
   /**
-   * Invokes the `cleanup` lifecycle hook on the raw hooks object, if defined.
-   * Registered as a Piper teardown step so it fires after all items are processed.
+   * Invokes the `cleanup` lifecycle hook on the resolved hooks object, if
+   * defined. Registered as a Piper teardown step so it fires after all items
+   * are processed.
    *
    * @param {unknown} ctx - Value passed by {@link Piper#pipe} (the items array).
    * @returns {Promise<void>}
    * @private
    */
   async #cleanupHooks(ctx) {
-    const ab = this.#actionBuilder
-    const ah = ab?.hooks
+    const wrapper = await this.#ensureBuilt()
+    const ah = wrapper.hooks
     const cleanup = ah?.cleanup
 
     if(cleanup)
-      await cleanup.call(ah, ctx)
+      await cleanup.call(ah.hooks, ctx)
   }
 
   /**
@@ -108,10 +127,7 @@ export default class ActionRunner extends Piper {
    * @throws {Tantrum} When both an activity and the done callback fail.
    */
   async run(context, parentWrapper=null) {
-    if(!this.#actionWrapper)
-      this.#actionWrapper = await this.#actionBuilder.build(this)
-
-    const actionWrapper = this.#actionWrapper
+    const actionWrapper = await this.#ensureBuilt()
     const activities = Array.from(actionWrapper.activities)
 
     let caughtError = null

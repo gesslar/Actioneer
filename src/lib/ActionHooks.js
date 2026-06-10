@@ -75,11 +75,11 @@ export default class ActionHooks extends BrowserActionHooks {
 
     const hooksFile = new FileObject(config.hooksFile)
 
-    debug("Loading hooks from %o", 2, hooksFile.uri)
-    debug("Checking hooks file exists: %o", 2, hooksFile.uri)
+    debug("Loading hooks from %o", 2, hooksFile.path)
+    debug("Checking hooks file exists: %o", 2, hooksFile.path)
 
     if(!await hooksFile.exists)
-      throw Sass.new(`No such hooks file, ${hooksFile.uri}`)
+      throw Sass.new(`No such hooks file, ${hooksFile.path}`)
 
     try {
       const hooksImport = await hooksFile.import()
@@ -100,7 +100,7 @@ export default class ActionHooks extends BrowserActionHooks {
       // Create instance with loaded hooks
       return new ActionHooks({...config, hooks, debug})
     } catch(error) {
-      debug("Failed to load hooks %o: %o", 1, hooksFile.uri, error.message)
+      debug("Failed to load hooks %o: %o", 1, hooksFile.path, error.message)
 
       return null
     }
