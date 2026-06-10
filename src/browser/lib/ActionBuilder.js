@@ -51,6 +51,16 @@ import {ACTIVITY} from "./Activity.js"
  * @class ActionBuilder
  */
 export default class ActionBuilder {
+  /**
+   * The ActionHooks class used to resolve hooks. Defaults to the
+   * browser-compatible implementation (pre-instantiated hooks only). The Node
+   * entry point overrides this with the file-loading subclass so that
+   * {@link ActionBuilder#withHooksFile} works.
+   *
+   * @type {typeof ActionHooks}
+   */
+  static HooksClass = ActionHooks
+
   /** @type {ActionBuilderAction?} */
   #action = null
   /** @type {Map<string|symbol, ActivityDefinition>} */
@@ -334,23 +344,29 @@ export default class ActionBuilder {
   }
 
   async #getHooks() {
-    const newHooks = ActionHooks.new
+    const HooksClass = ActionBuilder.HooksClass
 
     const hooks = this.#hooks
     if(hooks) {
-      // If hooks is already an ActionHooks instance, use it directly
+      // If hooks is already an ActionHooks instance, use it directly.
+      // The base class catches subclass instances too.
       if(hooks instanceof ActionHooks)
         return hooks
 
       // Otherwise, wrap it in a new ActionHooks instance
-      return await newHooks({hooks}, this.#debug)
+      return await HooksClass.new({hooks}, this.#debug)
     }
 
     const hooksFile = this.#hooksFile
     const hooksKind = this.#hooksKind
 
+    // File loading is only available on the Node HooksClass; the loader keys the
+    // class to instantiate off `actionKind`.
     if(hooksFile && hooksKind)
-      return await newHooks({hooksFile,hooksKind}, this.#debug)
+      return await HooksClass.new(
+        {hooksFile, actionKind: hooksKind},
+        this.#debug,
+      )
   }
 
   /**

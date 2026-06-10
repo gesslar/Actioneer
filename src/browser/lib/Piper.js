@@ -170,9 +170,9 @@ export default class Piper extends NotifyClass {
    * @param {Array<unknown>} settled - Results from settleAll
    * @throws {Tantrum} - If any settled result was rejected
    */
-  #processResult(_message, settled) {
+  #processResult(message, settled) {
     if(Promised.hasRejected(settled))
-      Promised.throw(settled)
+      Promised.throw(message, settled)
   }
 
   /**

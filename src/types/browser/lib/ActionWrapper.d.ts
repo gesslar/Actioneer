@@ -58,6 +58,12 @@ export default class ActionWrapper {
      * @returns {unknown|null} Action instance or null.
      */
     get action(): unknown | null;
+    /**
+     * Get the resolved hooks manager.
+     *
+     * @returns {import("./ActionHooks.js").default?} Hooks manager or null.
+     */
+    get hooks(): import("./ActionHooks.js").default | null;
     #private;
 }
 export type WrappedActivityConfig = {

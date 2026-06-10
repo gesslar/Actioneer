@@ -45,6 +45,15 @@
  */
 export default class ActionBuilder {
     /**
+     * The ActionHooks class used to resolve hooks. Defaults to the
+     * browser-compatible implementation (pre-instantiated hooks only). The Node
+     * entry point overrides this with the file-loading subclass so that
+     * {@link ActionBuilder#withHooksFile} works.
+     *
+     * @type {typeof ActionHooks}
+     */
+    static HooksClass: typeof ActionHooks;
+    /**
      * Creates a new ActionBuilder instance with the provided action callback.
      *
      * @param {ActionBuilderAction} [action] - Base action invoked by the runner when a block satisfies the configured structure.
