@@ -67,6 +67,6 @@
   "devDependencies": {
     "@gesslar/uglier": "^2.4.1",
     "eslint": "^10.5.0",
-    "typescript": "^6.0.3"
+    "typescript": "^7.0.2"
   }
 }
