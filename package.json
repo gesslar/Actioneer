@@ -62,7 +62,7 @@
     "major": "npm version major"
   },
   "dependencies": {
-    "@gesslar/toolkit": "^5.6.0"
+    "@gesslar/toolkit": "^6.0.3"
   },
   "devDependencies": {
     "@gesslar/uglier": "^2.4.1",
